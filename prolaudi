@@ -1,0 +1,63 @@
+#!/usr/bin/env swipl
+% vim: ft=prolog:noet:ts=4:sw=4
+:- initialization(main,main).
+:- use_module(library(protobufs)).
+:- set_stream(user_output,type(binary)).
+
+rate(44100).
+
+%signal/4 - handles Len calculation
+%signal([],_,_,_).
+signal(S,Rate,Freq,Len):-
+	Samples is truncate(Rate*Len),
+	signal(S,0,Samples,Rate,Freq).
+
+%signal/5 - samples
+signal([],S,S,_,_).
+signal([Sample|T],SIndex,Samples,Rate,Freq):-
+	Sample is sin( Freq * SIndex / Rate *pi*2),
+	SIndexN is SIndex+1,
+	signal(T,SIndexN,Samples,Rate,Freq).
+
+/*
+ *
+ */
+
+%octave scale twelve-tet
+ost(maj,[0,4,7]).
+ost(min,[0,3,7]).
+ost(maj7,[0,4,7,11]).
+
+%ost frequency map
+ostfm([Hout|Tout],[Hin|Tin]):-
+	Hout is 2 ** (Hin / 12),
+	ostfm(Tout,Tin).
+ostfm([],[]).
+	
+
+pfs(_,[]).
+pfs(Stream,[H|T]):-
+	protobufs:float32_codes(H,C),
+	pbs(user_output,C),
+	pfs(Stream,T).
+
+pbs(_,[]).
+pbs(Stream,[H|T]):-put_byte(Stream,H),pbs(Stream,T).
+
+main(_):-
+	Len is 10.0,
+	get_time(StartTime),
+
+	signal(S,44100,432,Len),
+
+	pfs(user_output,S),
+	
+	get_time(EndTime),
+	TakenTime is EndTime-StartTime,
+	Rate is Len / TakenTime,
+	write(user_error,'Time taken: '),
+	writeln(user_error,TakenTime),
+	write(user_error,'Rate: '),
+	writeln(user_error,Rate).
+
+% convert: ffmpeg -f f32le -i a -c:a pcm_s16le -y a.wav
