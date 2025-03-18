@@ -6,18 +6,20 @@
 
 rate(44100).
 
-%signal/4 - handles Len calculation
-%signal([],_,_,_).
-signal(S,Rate,Freq,Len):-
+%signal/3 - handles Len calculation
+%signal([],_,_).
+signal(S,Freq,Len):-
+	rate(Rate),
 	Samples is truncate(Rate*Len),
-	signal(S,0,Samples,Rate,Freq).
+	signal(S,0,Samples,Freq).
 
-%signal/5 - samples
-signal([],S,S,_,_).
-signal([Sample|T],SIndex,Samples,Rate,Freq):-
+%signal/4 - samples
+signal([],S,S,_).
+signal([Sample|T],SIndex,Samples,Freq):-
+	rate(Rate),
 	Sample is sin( Freq * SIndex / Rate *pi*2),
 	SIndexN is SIndex+1,
-	signal(T,SIndexN,Samples,Rate,Freq).
+	signal(T,SIndexN,Samples,Freq).
 
 /*
  *
@@ -48,7 +50,7 @@ main(_):-
 	Len is 10.0,
 	get_time(StartTime),
 
-	signal(S,44100,432,Len),
+	signal(S,432,1.11),
 
 	pfs(user_output,S),
 	
