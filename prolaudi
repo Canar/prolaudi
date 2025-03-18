@@ -21,6 +21,12 @@ signal([Sample|T],SIndex,Samples,Freq):-
 	SIndexN is SIndex+1,
 	signal(T,SIndexN,Samples,Freq).
 
+%signals/3 - sequence frequencies
+signals([],[],_).
+signals(S,[H|T],L):-
+	signal(Sa,H,L),
+	append(Sa,Sb,S),
+	signals(Sb,T,L).
 /*
  *
  */
