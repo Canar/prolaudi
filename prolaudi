@@ -5,6 +5,7 @@
 :- set_stream(user_output,type(binary)).
 
 rate(44100).
+key(432).
 
 %signal/3 - handles Len calculation
 %signal([],_,_).
@@ -17,7 +18,8 @@ signal(S,Freq,Len):-
 signal([],S,S,_).
 signal([Sample|T],SIndex,Samples,Freq):-
 	rate(Rate),
-	Sample is sin( Freq * SIndex / Rate *pi*2),
+	key(Key),
+	Sample is sin( Freq * Key * SIndex / Rate *pi*2),
 	SIndexN is SIndex+1,
 	signal(T,SIndexN,Samples,Freq).
 
@@ -35,6 +37,7 @@ signals(S,[H|T],L):-
 ost(maj,[0,4,7]).
 ost(min,[0,3,7]).
 ost(maj7,[0,4,7,11]).
+ost(ionian,[0,2,4,5,7,9,11]).
 
 %ost frequency map
 ostfm([Hout|Tout],[Hin|Tin]):-
@@ -56,7 +59,9 @@ main(_):-
 	Len is 10.0,
 	get_time(StartTime),
 
-	signal(S,432,1.11),
+	ost(ionian,O),
+	ostfm(F,O),
+	signals(S,F,0.4),
 
 	pfs(user_output,S),
 	
@@ -67,5 +72,3 @@ main(_):-
 	writeln(user_error,TakenTime),
 	write(user_error,'Rate: '),
 	writeln(user_error,Rate).
-
-% convert: ffmpeg -f f32le -i a -c:a pcm_s16le -y a.wav
