@@ -3,8 +3,11 @@ TMPFILE=a
 stream:
 	./prolaudi |\
 	pw-play --format f32 --channels 1 --rate 44100 -
-	#play -
-	#ffmpeg -hide_banner -loglevel 32 -f f32le -i - -f pulse default
+
+.PHONY: stream
+
+#play -
+#ffmpeg -hide_banner -loglevel 32 -f f32le -i - -f pulse default
 
 playback: $(TMPFILE).wav
 	play -q $(TMPFILE).wav

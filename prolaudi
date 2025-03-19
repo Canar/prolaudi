@@ -45,6 +45,16 @@ ostfm([Hout|Tout],[Hin|Tin]):-
 	ostfm(Tout,Tin).
 ostfm([],[]).
 	
+%Freqs,Notes,Ost
+notes([Hf|Tf],[Hn|Tn],Ost):-
+	ost(Ost,O),
+	length(O,Ol),
+	Octave is div(Hn,Ol),
+	Offset is mod(Hn,Ol),
+	nth0(Offset,O,Ostval),
+	Hf is Octave*12 + Ostval.
+notes([],[],_).
+
 
 pfs(_,[]).
 pfs(Stream,[H|T]):-
