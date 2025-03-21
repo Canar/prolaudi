@@ -1,7 +1,8 @@
 #!/usr/bin/env swipl
 % vim: ft=prolog:noet:ts=4:sw=4
 :- initialization(main,main).
-:- use_module(library(protobufs)).
+:- use_module(library(protobufs)),
+   use_module(library(yall)).
 :- set_stream(user_output,type(binary)).
 
 rate(44100).
@@ -25,6 +26,11 @@ signal([Sample|T],SIndex,Samples,Freq):-
 
 %signals/3 - sequence frequencies
 signals([],[],_).
+signals(S,[[F,M]|T],L):-
+	Time is M * L,
+	signal(Sa,F,Time),
+	append(Sa,Sb,S),
+	signals(Sb,T,L).
 signals(S,[H|T],L):-
 	signal(Sa,H,L),
 	append(Sa,Sb,S),
@@ -40,8 +46,6 @@ ost(maj,[0,4,7]).
 ost(min,[0,3,7]).
 ost(maj7,[0,4,7,11]).
 
-
-
 ost(ionian,    [0,2,4,5,7,9,11]).
 ost(dorian,    [0,2,3,5,7,9,10]).
 ost(phrygian,  [0,1,3,5,7,8,10]).
@@ -50,24 +54,26 @@ ost(mixolydian,[0,2,4,5,7,9,10]).
 ost(aeolian,   [0,2,3,5,7,8,10]).
 ost(locrian,   [0,1,3,5,6,8,10]).
 
-% ionian WWHWWWH
-% dorian  WHWWWHW
-% phrygian HWWWHWW
-% lydian    WWWHWWH
-% mixolydian WWHWWHW
-% aeolian     WHWWHWW
-% locrian      HWWHWWW
-
-
-
+ost(ionianjlm, [0,2,4,7,9,11]). % jesus loves me scale, ionian X lydian
 
 %ost frequency map
+ostfm([[Hout,L]|Tout],[[Hin,L]|Tin]):-
+	Hout is 2 ** (Hin / 12),
+	ostfm(Tout,Tin).
 ostfm([Hout|Tout],[Hin|Tin]):-
 	Hout is 2 ** (Hin / 12),
 	ostfm(Tout,Tin).
 ostfm([],[]).
 	
 %Freqs,Notes,Ost
+notes([[Hf,L]|Tf],[[Hn,L]|Tn],Ost):-
+	ost(Ost,O),
+	length(O,Ol),
+	Octave is div(Hn,Ol),
+	Offset is mod(Hn,Ol),
+	nth0(Offset,O,Ostval),
+	Hf is Octave*12 + Ostval,
+	notes(Tf,Tn,Ost).
 notes([Hf|Tf],[Hn|Tn],Ost):-
 	ost(Ost,O),
 	length(O,Ol),
@@ -83,7 +89,7 @@ pfs([]).
 pfs([H|T]):-
 	protobufs:float32_codes(H,C),
 	maplist(put_byte(user_output),C),
-	pfs(Stream,T).
+	pfs(T).
 
 tune(jesuslovesme,[
 	0,-2,-2,-3, -2,0,0,0, 1,1,3,1,     1,0,0,0,
@@ -92,12 +98,32 @@ tune(jesuslovesme,[
 	0,0,-2,0,   1,3,3,1,  0,-4,-2,-3, -4,-4,-4
 ]).
 
+tune(jesuslovesme_off,[
+4,2,2,1,2,4,4,4,5,5,7,5,5,4,4,4,4,2,2,1,2,4,4,4,5,5,4,0,2,1,0,0,4,4,2,4,5,7,7,7,4,4,2,0,2,1,1,1,4,4,2,4,5,7,7,5,4,0,2,1,0,0,0
+]).
+
+tune(jesuslovesme_scaled,[
+3,2,2,1,2,3,3,3,4,4,6,4,4,3,3,3,3,2,2,1,2,3,3,3,4,4,3,0,2,1,0,0,3,3,2,3,4,6,6,6,3,3,2,0,2,1,1,1,3,3,2,3,4,6,6,4,3,0,2,1,0,0,0
+]).
+
+tune(jesuslovesme_st,[ %scaled, timed
+3,2,2,1,2,3,[3,2],
+4,4,6,4,4,3,[3,2],
+3,2,2,1,2,3,[3,2],
+4,4,3,0,2,1,[0,2],
+
+[3,2],2,3,4,[6,3],
+[4,2],2,0,2,[6,3],
+[3,2],2,3,4,[6,3],
+4,3,0,2,1,[0,3]
+]).
+%
 main(_):-
 	Len is 10.0,
 	get_time(StartTime),
 
-	tune(jesuslovesme,Tune),
-	notes(N,Tune,ionian),
+	tune(jesuslovesme_st,Tune),
+	notes(N,Tune,ionianjlm),
 	ostfm(F,N),
 	signals(S,F,0.4),
 
