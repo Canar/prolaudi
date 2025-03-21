@@ -79,14 +79,11 @@ notes([Hf|Tf],[Hn|Tn],Ost):-
 notes([],[],_).
 
 
-pfs(_,[]).
-pfs(Stream,[H|T]):-
+pfs([]).
+pfs([H|T]):-
 	protobufs:float32_codes(H,C),
-	pbs(user_output,C),
+	maplist(put_byte(user_output),C),
 	pfs(Stream,T).
-
-pbs(_,[]).
-pbs(Stream,[H|T]):-put_byte(Stream,H),pbs(Stream,T).
 
 tune(jesuslovesme,[
 	0,-2,-2,-3, -2,0,0,0, 1,1,3,1,     1,0,0,0,
@@ -104,7 +101,7 @@ main(_):-
 	ostfm(F,N),
 	signals(S,F,0.4),
 
-	pfs(user_output,S),
+	pfs(S),
 	
 	get_time(EndTime),
 	TakenTime is EndTime-StartTime,
