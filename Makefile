@@ -1,10 +1,19 @@
+include config.mk
+PLAYER ?= pulseaudio
+#PLAYER ?= pipewire
 TMPFILE=a
 
-stream:
+stream: stream-$(PLAYER)
+
+stream-pipewire	:
 	./prolaudi |\
 	pw-play --format f32 --channels 1 --rate 44100 -
 
-.PHONY: stream
+stream-pulseaudio :
+	./prolaudi |\
+	paplay --format=float32le --channels=1 --rate=44100 -
+
+.PHONY: stream stream-$(PLAYER)
 
 #play -
 #ffmpeg -hide_banner -loglevel 32 -f f32le -i - -f pulse default
