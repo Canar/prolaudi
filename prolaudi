@@ -26,15 +26,24 @@ signal([Sample|T],SIndex,Samples,Freq):-
 
 %signals/3 - sequence frequencies
 signals([],[],_).
-signals(S,[[F,M]|T],L):-
-	Time is M * L,
-	signal(Sa,F,Time),
-	append(Sa,Sb,S),
-	signals(Sb,T,L).
 signals(S,[H|T],L):-
-	signal(Sa,H,L),
+	(
+	H=[F,M]
+	->	(
+		Time is M * L,
+		Tone=F
+	);(
+		Time=L,
+		Tone=H
+	)
+	),
+	signal(Sa,Tone,Time),
 	append(Sa,Sb,S),
 	signals(Sb,T,L).
+%signals(S,[H|T],L):-
+%	signal(Sa,H,L),
+%	append(Sa,Sb,S),
+%	signals(Sb,T,L).
 /*
  *
  */
@@ -113,9 +122,9 @@ tune(jesuslovesme_st,[ %scaled, timed
 4,4,3,0,2,1,[0,2],
 
 [3,2],2,3,4,[6,3],
-[4,2],2,0,2,[6,3],
-[3,2],2,3,4,[6,3],
-4,3,0,2,1,[0,3]
+[3,2],2,0,2,[1,3],
+[3,2],2,3,4,[6,2],4,
+3,0,2,1,[0,3]
 ]).
 %
 main(_):-
