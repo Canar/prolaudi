@@ -1,6 +1,5 @@
 include config.mk
-PLAYER ?= pulseaudio
-#PLAYER ?= pipewire
+PLAYER ?= pipewire
 TMPFILE=a
 
 stream: stream-$(PLAYER)
