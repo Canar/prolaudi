@@ -18,6 +18,6 @@ First draft of Holy, Holy, Holy! `2024-03-24`
 
 ## Listen
 
-[https://www.youtube.com/watch?v=Fs2juOfHIoA](First listenable draft; tune is the hymn Holy, Holy, Holy!)
+[First listenable draft. Tune is Nicaea, from the old hymn Holy, Holy, Holy!](https://www.youtube.com/watch?v=Fs2juOfHIoA)
 
  
