@@ -4,6 +4,11 @@ TMPFILE=a
 
 stream: stream-$(PLAYER)
 
+stream-pipewire-reverb	:
+	./prolaudi |\
+	ffmpeg -f f32le -hide_banner -loglevel 32 -i - -af ladspa=file=tap_reverb:tap_reverb -f f32le - |\
+	pw-play --format f32 --channels 2 --rate 44100 -
+
 stream-pipewire	:
 	./prolaudi |\
 	pw-play --format f32 --channels 1 --rate 44100 -
@@ -25,5 +30,6 @@ $(TMPFILE): prolaudi
 
 $(TMPFILE).wav: $(TMPFILE)
 	 ffmpeg -hide_banner -loglevel 32 -f f32le -i $(TMPFILE) -c:a pcm_s16le -y $(TMPFILE).wav
+	 #ffmpeg -hide_banner -loglevel 32 -f f32le -i $(TMPFILE) -af ladspa=file=tap_reverb:tap_reverb -c:a pcm_s16le -y $(TMPFILE).wav
 
 
