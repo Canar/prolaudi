@@ -1,13 +1,14 @@
 #!/usr/bin/env swipl
 % vim: ft=prolog:noet:ts=4:sw=4
-:- initialization(main,main).
-:- use_module(library(protobufs)),
-   use_module(library(yall)).
-:- set_stream(user_output,type(binary)).
-:- set_prolog_flag(stack_limit, 2_147_483_648).
+:-	initialization(main,main)
+,	use_module(library(protobufs))
+,	use_module(library(yall))
+,	set_stream(user_output,type(binary))
+,	set_prolog_flag(stack_limit, 2_147_483_648).
 
 rate(44100).
 key(100).
+notelen(1r16).
 %key(432).
 
 %signal/3 - handles Len calculation
@@ -26,22 +27,31 @@ signal([Sample|T],SIndex,Samples,Freq):-
 	SIndexN is SIndex+1,
 	signal(T,SIndexN,Samples,Freq).
 
+timetone(Time,Tone,L,[Tone,M]):-
+    number(L),
+	number(M),
+	number(Tone),
+    Time is L * M.
+
+timetone(Time,Tone,Time,Tone):- %tone info only
+	number(Time),
+	number(Tone).
+
 %signals/3 - sequence frequencies
-signals([],[],_).
-signals(S,[H|T],L):-
-	(
-	H=[F,M]
-	->	(
-		Time is M * L,
-		Tone=F
-	);(
-		Time=L,
-		Tone=H
-	)
-	),
-	signal(Sa,Tone,Time),
-	append(Sa,Sb,S),
-	signals(Sb,T,L).
+%signals([],[],_).
+%signals(S,[H|T],L):-
+%	timetone(Time,Tone,L,H),
+%	signal(Sa,Tone,Time),
+%	append(Sa,Sb,S),
+%	signals(Sb,T,L).
+
+signals(S,T):-
+	maplist([Sm,Tm]>>(
+		notelen(L),
+		timetone(Time,Tone,L,Tm),
+		signal(Sm,Tone,Time)
+	),Sz,T),
+	append(Sz,S).
 %signals(S,[H|T],L):-
 %	signal(Sa,H,L),
 %	append(Sa,Sb,S),
@@ -67,12 +77,14 @@ ost(locrian,   [0,1,3,5,6,8,10]).
 
 ost(jesuslovesme, [0,2,4,7,9]). % jesus loves me scale (pentatonic!)
 
+hinhout(Hin,Hout):-
+	Hout is 2 ** (Hin / 12).
 %ost frequency map
 ostfm([[Hout,L]|Tout],[[Hin,L]|Tin]):-
-	Hout is 2 ** (Hin / 12),
+	hinhout(Hin,Hout),
 	ostfm(Tout,Tin).
 ostfm([Hout|Tout],[Hin|Tin]):-
-	Hout is 2 ** (Hin / 12),
+	hinhout(Hin,Hout),
 	ostfm(Tout,Tin).
 ostfm([],[]).
 	
@@ -106,8 +118,12 @@ pnotes(_,[],[]).
 %	pfs(T).
 
 pfs(S):-
-	maplist([Sm,Cm]>>(protobufs:float32_codes(Sm,Cm)),S,C),
-	maplist(maplist(put_byte(user_output)),C).
+	maplist([Sm,Cm]>>(
+		protobufs:float32_codes(Sm,Cm)
+	),S,C),
+	maplist(
+		maplist(put_byte(user_output))
+	,C).
 
 tune(jesuslovesme,[ %scaled, timed
 3,2,2,1,2,3,[3,2],
@@ -178,7 +194,8 @@ main(_):-
 	notes(N,Tune,phrygian),
 	%notes(N,Tune,phrygian),
 	ostfm(F,N),
-	signals(S,F,1/16),
+	%signals(S,F,1r16),
+	signals(S,F),
 	
 	%protobufs:float32_codes(H,C),
 	%maplist(put_byte(user_output),C),
