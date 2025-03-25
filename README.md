@@ -13,5 +13,11 @@ Hacky software synthesis in SWI-Prolog.
 
 ## Release Log
 
-Initial publication. `2025-03-21`
+Initial publication. `2025-03-21`\
+First draft of Holy, Holy, Holy! `2024-03-24`
+
+## Listen
+
+[https://www.youtube.com/watch?v=Fs2juOfHIoA](First listenable draft; tune is the hymn Holy, Holy, Holy!)
+
  

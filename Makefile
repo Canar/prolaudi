@@ -29,7 +29,7 @@ $(TMPFILE): prolaudi
 	./prolaudi >$(TMPFILE)
 
 $(TMPFILE).wav: $(TMPFILE)
-	 ffmpeg -hide_banner -loglevel 32 -f f32le -i $(TMPFILE) -c:a pcm_s16le -y $(TMPFILE).wav
-	 #ffmpeg -hide_banner -loglevel 32 -f f32le -i $(TMPFILE) -af ladspa=file=tap_reverb:tap_reverb -c:a pcm_s16le -y $(TMPFILE).wav
+	 #ffmpeg -hide_banner -loglevel 32 -f f32le -i $(TMPFILE) -c:a pcm_s16le -y $(TMPFILE).wav
+	 ffmpeg -hide_banner -loglevel 32 -f f32le -i $(TMPFILE) -af dynaudnorm,ladspa=file=tap_reverb:tap_reverb,dynaudnorm -c:a pcm_s16le -y $(TMPFILE).wav
 
 
