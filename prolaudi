@@ -79,6 +79,7 @@ ost(jesuslovesme, [0,2,4,7,9]). % jesus loves me scale (pentatonic!)
 
 hinhout(Hin,Hout):-
 	Hout is 2 ** (Hin / 12).
+
 %ost frequency map
 ostfm([[Hout,L]|Tout],[[Hin,L]|Tin]):-
 	hinhout(Hin,Hout),
@@ -94,6 +95,15 @@ notes([[Hf,L]|Tf],[[Hn,L]|Tn],Ost):-
 	length(O,Ol),
 	Octave is div(Hn,Ol),
 	Offset is mod(Hn,Ol),
+	nth0(Offset,O,Ostval),
+	Hf is Octave*12 + Ostval,
+	notes(Tf,Tn,Ost).
+notes([Hf|Tf],[sharp(Hn)|Tn],Ost):-
+	ost(Ost,O),
+	length(O,Ol),
+	Hz is Hn+1,
+	Octave is div(Hz,Ol),
+	Offset is mod(Hz,Ol),
 	nth0(Offset,O,Ostval),
 	Hf is Octave*12 + Ostval,
 	notes(Tf,Tn,Ost).
@@ -175,7 +185,7 @@ tune(holyholyholy_x,[ %phrygian?
 4,11,13,[16,5],
 
 3,9,12,[19,5],
-%3,sharp(8),13,[19,5],
+3,sharp(8),13,[19,5],
 
 0
 %[2,2],6,11,[16,2]
