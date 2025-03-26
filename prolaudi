@@ -39,13 +39,21 @@ hinhout(Hin,Hout):-
 	Hout is 2 ** (Hin / 12).
 
 %ost frequency map
-ostfm([[Hout,L]|Tout],[[Hin,L]|Tin]):-
-	hinhout(Hin,Hout),
-	ostfm(Tout,Tin).
-ostfm([Hout|Tout],[Hin|Tin]):-
-	hinhout(Hin,Hout),
-	ostfm(Tout,Tin).
-ostfm([],[]).
+%ostfm([[Hout,L]|Tout],[[Hin,L]|Tin]):-
+%	hinhout(Hin,Hout),
+%	ostfm(Tout,Tin).
+%ostfm([Hout|Tout],[Hin|Tin]):-
+%	hinhout(Hin,Hout),
+%	ostfm(Tout,Tin).
+%ostfm([],[]).
+
+ostfm0([Ho,L],[Hi,L]):-hinhout(Hi,Ho).
+ostfm0(Ho,Hi):-hinhout(Hi,Ho).
+
+ostfm(O,I):-
+	maplist([Om,Im]>>(
+		ostfm0(Om,Im)
+	),O,I).
 	
 note0(Ost,Chromatic,Scaled):-
 	ost(Ost,O),
@@ -83,6 +91,7 @@ main(_):-
 	tunescale(TuneName,Scale,Key,Notelen),
 	assert(key(Key)),
 	assert(notelen(Notelen)),
+
 	notes(Scale,Notes,Tune),
 	ostfm(Freq,Notes),
 	
