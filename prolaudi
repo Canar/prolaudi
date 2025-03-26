@@ -80,8 +80,8 @@ main(_):-
 
 	%notes(Scale,Notes,Tune),
 
-	maplist([Cm,Sm]>>(
-		note1(Scale,Cm,Sm)
+	maplist([Nm,Tm]>>(
+		note1(Scale,Nm,Tm)
 	),Notes,Tune),
 	
 	maplist([Nm]>>(
