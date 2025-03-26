@@ -8,8 +8,6 @@
 .
 
 rate(44100).
-%key(400).
-%notelen(1r2).
 
 %signal/3 - handles Len calculation
 %signal([],_,_).
@@ -37,28 +35,6 @@ timetone(Time,Tone,Time,Tone):- %tone info only
 	number(Time),
 	number(Tone).
 
-%signals/3 - sequence frequencies
-%signals([],[],_).
-%signals(S,[H|T],L):-
-%	timetone(Time,Tone,L,H),
-%	signal(Sa,Tone,Time),
-%	append(Sa,Sb,S),
-%	signals(Sb,T,L).
-
-signals(S,T):-
-	maplist([Sm,Tm]>>(
-		notelen(L),
-		timetone(Time,Tone,L,Tm),
-		signal(Sm,Tone,Time)
-	),Sz,T),
-	append(Sz,S).
-%signals(S,[H|T],L):-
-%	signal(Sa,H,L),
-%	append(Sa,Sb,S),
-%	signals(Sb,T,L).
-/*
- *
- */
 hinhout(Hin,Hout):-
 	Hout is 2 ** (Hin / 12).
 
@@ -110,9 +86,6 @@ main(_):-
 	notes(Scale,Notes,Tune),
 	ostfm(Freq,Notes),
 	
-	%signals(S,Freq),
-	trace,
-
 	maplist([Tm]>>(
 		notelen(L),
 		timetone(Time,Tone,L,Tm),
