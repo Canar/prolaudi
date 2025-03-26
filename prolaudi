@@ -67,17 +67,15 @@ main(_):-
 	%Len is 10.0,
 	get_time(StartTime),
 
-	TuneName=holyholyholy,
+	TuneName=jesuslovesme,
 	tune(TuneName,Tune),
 	tunescale(TuneName,Scale,Key,Notelen),
 	assert(key(Key)),
-	assert(notelen(Notelen)),
 
 	maplist([Tm]>>(
 		note1(Scale,Nm,Tm),
 		ostfm0(Fm,Nm),
-		notelen(L),
-		timetone(Time,Tone,L,Fm),
+		timetone(Time,Tone,Notelen,Fm),
 		signal(S,Tone,Time),
 		maplist([Sm]>>(
 			protobufs:float32_codes(Sm,Cm),
