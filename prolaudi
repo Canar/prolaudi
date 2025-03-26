@@ -60,11 +60,6 @@ note1(Ost,Chromatic,flat(Scaled)):-
 note1(Ost,Chromatic,Scaled):-
 	note0(Ost,Chromatic,Scaled).
 
-notes(Ost,C,S):-
-	maplist([Cm,Sm]>>(
-		note1(Ost,Cm,Sm)
-	),C,S).
-
 pnotes(_,[],[]).
 %pnotes(Ost,[Hf|Tf],[Hn|Tn]):-
 
@@ -78,13 +73,8 @@ main(_):-
 	assert(key(Key)),
 	assert(notelen(Notelen)),
 
-	%notes(Scale,Notes,Tune),
-
-	maplist([Nm,Tm]>>(
-		note1(Scale,Nm,Tm)
-	),Notes,Tune),
-	
-	maplist([Nm]>>(
+	maplist([Tm]>>(
+		note1(Scale,Nm,Tm),
 		ostfm0(Fm,Nm),
 		notelen(L),
 		timetone(Time,Tone,L,Fm),
@@ -93,7 +83,7 @@ main(_):-
 			protobufs:float32_codes(Sm,Cm),
 			maplist(put_byte(user_output),Cm)
 		),S)
-	),Notes),
+	),Tune),
 	
 	get_time(EndTime),
 	TakenTime is EndTime-StartTime,
