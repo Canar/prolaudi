@@ -4,7 +4,8 @@
 ,	use_module(library(protobufs))
 ,	use_module(library(yall))
 ,	set_stream(user_output,type(binary))
-,	set_prolog_flag(stack_limit, 2_147_483_648).
+%,	set_prolog_flag(stack_limit, 2_147_483_648)
+.
 
 rate(44100).
 %key(400).
@@ -108,12 +109,19 @@ main(_):-
 	assert(notelen(Notelen)),
 	notes(Scale,Notes,Tune),
 	ostfm(Freq,Notes),
-	signals(S,Freq),
+	
+	%signals(S,Freq),
+	trace,
 
-	maplist([Sm]>>(
-		protobufs:float32_codes(Sm,Cm),
-		maplist(put_byte(user_output),Cm)
-	),S),
+	maplist([Tm]>>(
+		notelen(L),
+		timetone(Time,Tone,L,Tm),
+		signal(S,Tone,Time),
+		maplist([Sm]>>(
+			protobufs:float32_codes(Sm,Cm),
+			maplist(put_byte(user_output),Cm)
+		),S)
+	),Freq),
 	
 	get_time(EndTime),
 	TakenTime is EndTime-StartTime,
