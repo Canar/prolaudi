@@ -89,38 +89,38 @@ ostfm([Hout|Tout],[Hin|Tin]):-
 	ostfm(Tout,Tin).
 ostfm([],[]).
 	
+note0(Chromatic,Scaled,Ost):-
+	ost(Ost,O),
+	length(O,Ostlen),
+	Octave is div(Scaled,Ostlen),
+	Offset is mod(Scaled,Ostlen),
+	nth0(Offset,O,Ostval),
+	Chromatic is Octave*12 + Ostval.
+	
+note1([Chromatic,L],[Scaled,L],Ost):-
+	note1(Chromatic,Scaled,Ost).
+note1(Chromatic,sharp(Scaled),Ost):-
+	note0(Ca,Scaled,Ost),
+	Chromatic is Ca + 1.
+note1(Chromatic,flat(Scaled),Ost):-
+	note0(Ca,Scaled,Ost),
+	Chromatic is Ca - 1.
+note1(Chromatic,Scaled,Ost):-
+	note0(Chromatic,Scaled,Ost).
 %Freqs,Notes,Ost
 notes([[Hf,L]|Tf],[[Hn,L]|Tn],Ost):-
-	ost(Ost,O),
-	length(O,Ol),
-	Octave is div(Hn,Ol),
-	Offset is mod(Hn,Ol),
-	nth0(Offset,O,Ostval),
-	Hf is Octave*12 + Ostval,
+	note0(Hf,Hn,Ost),
 	notes(Tf,Tn,Ost).
 notes([Hf|Tf],[flat(Hn)|Tn],Ost):-
-	ost(Ost,O),
-	length(O,Ol),
-	Octave is div(Hn,Ol),
-	Offset is mod(Hn,Ol),
-	nth0(Offset,O,Ostval),
-	Hf is Octave*12 + Ostval - 1,
+	note0(Hfa,Hn,Ost),
+	Hf is Hfa - 1,
 	notes(Tf,Tn,Ost).
 notes([Hf|Tf],[sharp(Hn)|Tn],Ost):-
-	ost(Ost,O),
-	length(O,Ol),
-	Octave is div(Hn,Ol),
-	Offset is mod(Hn,Ol),
-	nth0(Offset,O,Ostval),
-	Hf is Octave*12 + Ostval + 1,
+	note0(Hfa,Hn,Ost),
+	Hf is Hfa + 1,
 	notes(Tf,Tn,Ost).
 notes([Hf|Tf],[Hn|Tn],Ost):-
-	ost(Ost,O),
-	length(O,Ol),
-	Octave is div(Hn,Ol),
-	Offset is mod(Hn,Ol),
-	nth0(Offset,O,Ostval),
-	Hf is Octave*12 + Ostval,
+	note0(Hf,Hn,Ost),
 	notes(Tf,Tn,Ost).
 notes([],[],_).
 
