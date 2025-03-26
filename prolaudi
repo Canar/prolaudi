@@ -7,8 +7,8 @@
 ,	set_prolog_flag(stack_limit, 2_147_483_648).
 
 rate(44100).
-key(400).
-notelen(1r2).
+%key(400).
+%notelen(1r2).
 
 %signal/3 - handles Len calculation
 %signal([],_,_).
@@ -116,9 +116,11 @@ main(_):-
 	%Len is 10.0,
 	get_time(StartTime),
 
-	TuneName=jesuslovesme,
+	TuneName=holyholyholy,
 	tune(TuneName,Tune),
-	tunescale(TuneName,Scale),
+	tunescale(TuneName,Scale,Key,Notelen),
+	assert(key(Key)),
+	assert(notelen(Notelen)),
 	notes(Scale,Notes,Tune),
 	ostfm(Freq,Notes),
 	signals(S,Freq),
@@ -133,8 +135,8 @@ main(_):-
 	]),
 	!.
 
-tunescale(jesuslovesme,pentatonic).
-tunescale(holyholyholy,phrygian).
+tunescale(jesuslovesme,pentatonic,432,1r2).
+tunescale(holyholyholy,phrygian,432r4,1r14).
 
 tune(jesuslovesme,[ %scaled, timed
 3,2,2,1,2,3,[3,2],
