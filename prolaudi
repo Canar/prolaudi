@@ -93,8 +93,12 @@ main(_):-
 	assert(notelen(Notelen)),
 
 	notes(Scale,Notes,Tune),
-	ostfm(Freq,Notes),
+	% ostfm(Freq,Notes),
 	
+	maplist([Fm,Nm]>>(
+		ostfm0(Fm,Nm)
+	),Freq,Notes),
+
 	maplist([Tm]>>(
 		notelen(L),
 		timetone(Time,Tone,L,Tm),
