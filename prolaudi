@@ -6,6 +6,7 @@
 ,	set_stream(user_output,type(binary))
 %,	set_prolog_flag(stack_limit, 2_147_483_648)
 .
+say(X):-maplist(write(user_error),X).
 
 rate(44100).
 
@@ -35,9 +36,7 @@ timetone(Time,Tone,Time,Tone):- %tone info only
 	number(Time),
 	number(Tone).
 
-hinhout(Hin,Hout):-
-	Hout is 2 ** (Hin / 12).
-
+hinhout(Hin,Hout):-Hout is 2 ** (Hin / 12).
 ostfm0([Ho,L],[Hi,L]):-hinhout(Hi,Ho).
 ostfm0(Ho,Hi):-hinhout(Hi,Ho).
 	
@@ -49,16 +48,10 @@ note0(Ost,Chromatic,Scaled):-
 	nth0(Offset,O,Ostval),
 	Chromatic is Octave*12 + Ostval.
 	
-note1(Ost,[Chromatic,L],[Scaled,L]):-
-	note1(Ost,Chromatic,Scaled).
-note1(Ost,Chromatic,sharp(Scaled)):-
-	note0(Ost,Ca,Scaled),
-	Chromatic is Ca + 1.
-note1(Ost,Chromatic,flat(Scaled)):-
-	note0(Ost,Ca,Scaled),
-	Chromatic is Ca - 1.
-note1(Ost,Chromatic,Scaled):-
-	note0(Ost,Chromatic,Scaled).
+note1(Ost,[Chromatic,L],[Scaled,L]):- note1(Ost,Chromatic,Scaled).
+note1(Ost,Chromatic,sharp(Scaled)):-  note0(Ost,Ca,Scaled),Chromatic is Ca + 1.
+note1(Ost,Chromatic,flat(Scaled)):-   note0(Ost,Ca,Scaled),Chromatic is Ca - 1.
+note1(Ost,Chromatic,Scaled):-         note0(Ost,Chromatic,Scaled).
 
 pnotes(_,[],[]).
 %pnotes(Ost,[Hf|Tf],[Hn|Tn]):-
@@ -86,10 +79,8 @@ main(_):-
 	get_time(EndTime),
 	TakenTime is EndTime-StartTime,
 	%Rate is Len / TakenTime,
-	maplist(write(user_error),[
-		'Time taken: ',TakenTime,"\n"
+	say(['Time taken: ',TakenTime,"\n"]),
 	%	'Rate: ',Rate,"\n"
-	]),
 	!.
 
 tunescale(jesuslovesme,pentatonic,432,1r2).
