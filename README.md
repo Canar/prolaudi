@@ -14,7 +14,8 @@ Hacky software synthesis in SWI-Prolog.
 ## Release Log
 
 Initial publication. `2025-03-21`\
-First draft of Holy, Holy, Holy! `2024-03-24`
+First draft of Holy, Holy, Holy! `2024-03-24`\
+Cleanups, inlined iterating predicates with maplist `2024-03-25`
 
 ## Listen
 
