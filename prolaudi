@@ -10,19 +10,6 @@ say(X):-maplist(write(user_error),X).
 
 rate(44100).
 
-
-%signal/4 - samples
-%signal([],Si,Sa,_):-Si >= Sa,!.
-%signal([Sample|T],SIndex,Samples,Freq):-
-%	rate(Rate),
-%	key(Key),
-%	Sample is sin( Freq * Key * SIndex / Rate *pi*2),
-%	SIndexN is SIndex+1,
-%	signal(T,SIndexN,Samples,Freq).
-
-%signal(Count,Index,Samples,Freqs):-
-%	nth1(Index,
-
 timetone(Time,Tone,L,[Tone,M]):-
     number(L),
 	number(M),
@@ -56,30 +43,24 @@ pnotes(_,[],[]).
 main(_):-
 	%Len is 10.0,
 	get_time(StartTime),
+	rate(Rate),
 
-	TuneName=holyholyholy,
-	%TuneName=jesuslovesme,
+	%TuneName=holyholyholy,
+	TuneName=jesuslovesme,
 	tune(TuneName,Tune),
 	tunescale(TuneName,Scale,Key,Notelen),
-	assert(key(Key)),
 
 	maplist([Tm]>>(
 		note1(Scale,Nm,Tm),
 		ostfm0(Fm,Nm),
 		timetone(Time,Tone,Notelen,Fm),
-
-		rate(Rate),
 		SampleCount is truncate(Rate*Time),
-
 		numlist(1,SampleCount,IndexList),
-		maplist([Im,Sm]>>(
-			Sm is sin( Tone * Key * (Im-1) / Rate *pi*2)
-		),IndexList,S),
-
-		maplist([Sm]>>(
+		maplist([Im]>>(
+			Sm is sin( Tone * Key * (Im-1) / Rate *pi*2),
 			protobufs:float32_codes(Sm,Cm),
 			maplist(put_byte(user_output),Cm)
-		),S)
+		),IndexList)
 	),Tune),
 	
 	get_time(EndTime),
