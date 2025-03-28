@@ -1,6 +1,6 @@
 #!/usr/bin/env swipl
 % vim: ft=prolog:noet:ts=4:sw=4
-:-	initialization(main,main)
+:-	initialization(timed_goal(seqnote),main)
 ,	use_module(library(protobufs))
 ,	use_module(library(yall))
 ,	set_stream(user_output,type(binary))
@@ -32,13 +32,18 @@ note1(Ost,Chromatic,Scaled):-         note0(Ost,Chromatic,Scaled).
 pnotes(_,[],[]).
 %pnotes(Ost,[Hf|Tf],[Hn|Tn]):-
 
-main(_):-
-	%Len is 10.0,
+timed_goal(Goal):-
 	get_time(StartTime),
+	call(Goal),
+	get_time(EndTime),
+	TakenTime is EndTime-StartTime,
+	say(['Time taken: ',TakenTime,"\n"]).
+
+seqnote():-
 	rate(Rate),
 
-	%TuneName=holyholyholy,
-	TuneName=jesuslovesme,
+	TuneName=holyholyholy,
+	%TuneName=jesuslovesme,
 	tune(TuneName,Scale,Key,Notelen,Tune),
 
 	maplist([Tm]>>(
@@ -52,14 +57,7 @@ main(_):-
 			protobufs:float32_codes(Sm,Cm),
 			maplist(put_byte(user_output),Cm)
 		),IndexList)
-	),Tune),
-	
-	get_time(EndTime),
-	TakenTime is EndTime-StartTime,
-	%Rate is Len / TakenTime,
-	say(['Time taken: ',TakenTime,"\n"]),
-	%	'Rate: ',Rate,"\n"
-	!.
+	),Tune).
 
 tune(jesuslovesme,pentatonic,432,1r2,[ %scaled, timed
 3,2,2,1,2,3,[3,2],
@@ -72,33 +70,17 @@ tune(jesuslovesme,pentatonic,432,1r2,[ %scaled, timed
 [3,2],2,3,4,[5,2],4,
 3,0,2,1,[0,3]
 ]).
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tune(holyholyholy,phrygian,432r4,1r12,[ %phrygian?
-
-%holy holy
-5,7,9,[12,5],
-5,7,9,[12,5],
-3,5,12,[14,5],
-3,5,12,[14,5],
-
-2,6,11,[16,5],
-%2,8,13,[16,5],
-2,8,[13,6],
-5,7,12,[16,5],
-5,9,[11,6],
-
-1,8,10,[17,5],
-1,9,11,17,
-1,9,11,17,
-8,10,12,[17,5],
-8,11,13,[17,5],
-
-5,11,14,[16,5],
-5,9,14,[16,5],
-[5,2],[9,2],[12,2],[14,10],
-
-% ]).
-%tune(x,[
+%
+%ho           ly            ho             ly
+5,7,9,[12,5], 5,7,9,[12,5], 3,5,12,[14,5], 3,5,12,[14,5],
+%h             o           l              y
+2,6,11,[16,5], 2,8,[13,6], 5,7,12,[16,5], 5,9,[11,6],
+%l             o          rd         god             al
+1,8,10,[17,5], 1,9,11,17, 1,9,11,17, 8,10,12,[17,5], 8,11,13,[17,5],
+%mi             gh             ty
+5,11,14,[16,5], 5,9,14,[16,5], [5,2],[9,2],[12,2],[14,10],
 
 %early in the morn
 4,11,13,[16,5],
@@ -163,15 +145,24 @@ tune(holyholyholy,phrygian,432r4,1r12,[ %phrygian?
 1,8,11,[13,5],
 2,9,11,[13,5],
 2,9,11,13,
-5,12,8,12,
+5,8,12,
+6,8,11,
+7,8,10,
+6,8,11,
+5,8,12,
+5,16,12,
+5,14,12,
+5,10,12,
+5,8,12,
+5,8,12,
+5,8,12,
+5,8,12
 
-5,8,12,12,8,5,
-5,8,12,12,8,5,
-5,8,12,12,8,5,
-5,8,12,12,8,5,
-5,8,12,12,8,5,
-5,8,12,12,8,5
+]).
 
+ptune(holyholyholy,phrygian,432r4,,[ %phrygian?
+%ho           ly            ho             ly
+5,7,9,[12,5], 5,7,9,[12,5], 3,5,12,[14,5], 3,5,12,[14,5]
 ]).
 
 modality([0,+2,+2,+1,+2,+2,+2,+1]).
