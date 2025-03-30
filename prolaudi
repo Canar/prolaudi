@@ -1,8 +1,9 @@
 #!/usr/bin/env swipl
 % vim: ft=prolog:noet:ts=4:sw=4
-:-	initialization(timed_goal(seqnote),main)
+:-	initialization(timed_goal(pnote),main)
 ,	use_module(library(protobufs))
 ,	use_module(library(yall))
+%,	use_module(library(apply))
 ,	set_stream(user_output,type(binary))
 %,	set_prolog_flag(stack_limit, 2_147_483_648)
 .
@@ -56,25 +57,54 @@ seqnote():-
 		),IndexList)
 	),Tune).
 
+mins([A,_],[B,_]):-min(A,B).
+
+minn(A,B,C):-C is min(A,B).
+
+mixdown(Counts,Signals,Write,BufferIn,BufferOut):-
+	min_member(Mn,Counts),
+	max_member(Mx,Counts),
+	numlist(1,Mx,IndexList),
+	maplist([Index,BufferOutM]>>(
+		( nth1(Index,BufferIn,A) ; A=0.0 ),
+		foldl([S,I,O]>>(
+			nth1(Index,S,V),
+			say([I,"\n"]),
+			O is I + V;
+			O=I
+		),Signals,A,BufferOutM)
+	),IndexList,BufferOut).
+
 pnote():-
 	rate(Rate),
 
-	%TuneName=holyholyholy,
-	TuneName=jesuslovesme,
-	tune(TuneName,Scale,Key,Notelen,Tune),
+	TuneName=holyholyholy,
+	ptune(TuneName,Scale,Key,Notelen,Tune),
 
-	maplist([Tm]>>(
-		note1(Scale,Nm,Tm),
-		ostfm0(Fm,Nm),
-		timetone(Time,Tone,Notelen,Fm),
-		SampleCount is truncate(Rate*Time),
-		numlist(1,SampleCount,IndexList),
-		maplist([Im]>>(
-			Sm is sin(2*pi* Tone * Key * (Im-1) / Rate),
-			protobufs:float32_codes(Sm,Cm),
-			maplist(put_byte(user_output),Cm)
-		),IndexList)
+	maplist([Event]>>(
+		maplist([Note,Sz,SampleCount]>>(
+			note1(Scale,Nm,Note),
+			ostfm0(Fm,Nm),
+			timetone(Time,Tone,Notelen,Fm),
+			SampleCount is truncate(Rate*Time),
+			numlist(1,SampleCount,IndexList),
+			maplist([Im,Sm]>>(
+				Sm is sin(2*pi* Tone * Key * (Im-1) / Rate)
+			),IndexList,Sz)
+		),Event,S,SampleCounts),
+		mixdown(SampleCounts,S,Write,[],BufferOut),
+		say([BufferOut,"\n"])
+		%min_member(Msc,SampleCounts),
+		%say([Msc,"\n"])
 	),Tune).
+		/*
+		.
+
+				protobufs:float32_codes(Sm,Cm),
+				maplist(put_byte(user_output),Cm)
+			),IndexList)
+	),Tune).
+	*/
 
 tune(jesuslovesme,pentatonic,432,1r2,[ %scaled, timed
 3,2,2,1,2,3,t(3,2),
@@ -177,7 +207,7 @@ t(5,2),t(9,2),12,flat(11),t(14,10),
 
 ]).
 
-ptune(holyholyholy,phrygian,432r4,,[ %phrygian?
+ptune(holyholyholy,phrygian,432r4,1r4410,[ %phrygian?
 [5,7,9,12], [5,7,9,12], [3,5,12,14], [3,5,12,14]
 ]).
 
