@@ -37,6 +37,46 @@ timed_goal(Goal):-
 	TakenTime is EndTime-StartTime,
 	say(['Time taken: ',TakenTime,"\n"]).
 
+%eventseqp(Time,Event,Seq):-
+%eventseqp(Event,Seq):-
+%
+
+esp(_,[],[]).
+esp(Time,[Hi|Ti],[[Time,Hi]|To]):-esp(Time,Ti,To). %single note
+
+
+seqp_(_,[],[]).
+seqp_(Time,[Hi|Ti],[Ho|To]):- % single "event", ie. list of notes
+	nth0(0,Hi,note(Mna,_)),
+	foldl([E,If,Of]>>(
+		E=note(Lf,_),
+		Of is min(If,Lf)
+	),Hi,Mna,O),
+	TimeN is Time + O,
+	esp(Time,Hi,Ho),
+	seqp_(TimeN,Ti,To).
+
+
+seqp(In,Out):-
+	seqp_(0,In,Oz),
+	append(Oz,Out).
+
+
+timeseqp(TuneName,Seqp):-
+	rate(Rate),
+	ptune(TuneName,Scale,Key,Notelen,Tune),
+
+	maplist([Event,F]>>(
+	maplist([Note,Funct]>>(
+		note1(Scale,Nm,Note),
+		ostfm0(Fm,Nm),
+		timetone(Time,Tone,Notelen,Fm),
+		Funct=..[note,Time,Tone]
+		),Event,F)
+	),Tune,Seq),
+	seqp(Seq,Seqp),
+	say([Seqp]).
+
 seqnote():-
 	rate(Rate),
 
