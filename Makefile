@@ -21,7 +21,15 @@ stream-pulseaudio :
 	./prolaudi |\
 	paplay --format=float32le --channels=1 --rate=44100 -
 
-.PHONY: stream stream-$(PLAYER)
+swi :
+	#swipl -t main prolaud --prolog
+	swipl prolaudi --prolog
+	#swipl prolaudi --no-render --prolog
+
+help :
+	swipl prolaudi --help
+
+.PHONY: stream stream-$(PLAYER) swi
 
 #play -
 #ffmpeg -hide_banner -loglevel 32 -f f32le -i - -f pulse default

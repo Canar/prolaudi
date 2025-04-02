@@ -1,21 +1,22 @@
 #!/usr/bin/env swipl
 % vim: ft=prolog:noet:ts=4:sw=4
-:-	initialization(timed_goal(pnote),main)
+:-	initialization(main,main)
 ,	use_module(library(protobufs))
 ,	use_module(library(yall))
-%,	use_module(library(apply))
-,	set_stream(user_output,type(binary))
-%,	set_prolog_flag(stack_limit, 2_147_483_648)
+,	use_module(library(readline))
 .
+
 say(X):-maplist(write(user_error),X).
+sayl(L):-maplist([I]>>( say([I,"\n"]) ),L).
 
 rate(44100).
+version('0.0.0').
 
-timetone(Time,Tone,L,t(Tone,M)):-number(L),number(M),number(Tone),Time is L * M.
-timetone(Time,Tone,Time,Tone):-number(Time),number(Tone).
+timetone(Time,Tone,L,t(Tone,M)):-number(L),number(M),Time is L * M.
+timetone(Time,Tone,Time,Tone):-number(Time).
 
 ostfm0(t(Ho,L),t(Hi,L)):-ostfm0(Ho,Hi).
-ostfm0(Ho,Hi):-Ho is 2 ** (Hi / 12).
+ostfm0(Ho,Hi):-Ho is 2 ** Hi / 12.
 	
 note0(Ost,Chromatic,Scaled):-
 	ost(Ost,O),
@@ -56,11 +57,9 @@ seqp_(Time,[Hi|Ti],[Ho|To]):- % single "event", ie. list of notes
 	esp(Time,Hi,Ho),
 	seqp_(TimeN,Ti,To).
 
-
 seqp(In,Out):-
 	seqp_(0,In,Oz),
 	append(Oz,Out).
-
 
 timeseqp(TuneName,Seqp):-
 	rate(Rate),
@@ -71,17 +70,32 @@ timeseqp(TuneName,Seqp):-
 		note1(Scale,Nm,Note),
 		ostfm0(Fm,Nm),
 		timetone(Time,Tone,Notelen,Fm),
-		Funct=..[note,Time,Tone]
+		Funct=..[note,Time,Rate*Key*Tone]
 		),Event,F)
 	),Tune,Seq),
 	seqp(Seq,Seqp),
-	say([Seqp]).
+	ctsp(Seqp,C),
+	say([C]).
+
+%ctsp(Seqp,Ctsp).
+ctsp([],[]).
+ctsp([[Time,Event]|Tseqp],[[Time,[Event|Tn]]|Tctsp]):-
+	(	Tseqp=[[Time,_]|_] 
+	->	ctsp(Tseqp,[[Time,Tn]|Tctsp])
+	;	Tn=[],
+		ctsp(Tseqp,Tctsp)
+	).
+
+%note(SampleCount,SampleStart,SampleEnd,SampleLen,Tone)
+sampleseq([],[]).
+sampleseq([[Time,[Event|Te]]|T],Ss).
 
 seqnote():-
 	rate(Rate),
 
 	TuneName=holyholyholy,
 	%TuneName=jesuslovesme,
+	say(["Playing '",TuneName,"'.\n"]),
 	tune(TuneName,Scale,Key,Notelen,Tune),
 
 	maplist([Tm]>>(
@@ -113,7 +127,8 @@ mixdown(Counts,Signals,Write,BufferIn,BufferOut):-
 			O is I + V;
 			O=I
 		),Signals,A,BufferOutM)
-	),IndexList,BufferOut).
+	),IndexList,BufferOut),
+	say([Mn,Write]).%hiding error
 
 pnote():-
 	rate(Rate),
@@ -133,7 +148,7 @@ pnote():-
 			),IndexList,Sz)
 		),Event,S,SampleCounts),
 		mixdown(SampleCounts,S,Write,[],BufferOut),
-		say([BufferOut,"\n"])
+		say([BufferOut,"\n",Write])
 		%min_member(Msc,SampleCounts),
 		%say([Msc,"\n"])
 	),Tune).
@@ -145,6 +160,92 @@ pnote():-
 			),IndexList)
 	),Tune).
 	*/
+
+default_history_file('~/.swipl_history').
+
+assert_history_file:-
+	default_history_file(D),
+	current_predicate(rl_read_history/1) -> (
+		expand_file_name(D,[F]),
+		assert(history_file(F))
+	) ; true.
+
+load_history :-
+	history_file(F),
+	exists_file(F) -> (
+		rl_read_history(F)
+	) ; true.
+
+save_history :-
+	history_file(F),
+    rl_write_history(F).
+
+enter_repl():-
+	current_prolog_flag(readline,readline),
+	%set_prolog_flag(history,0),
+	assert_history_file,
+	load_history,
+	at_halt(save_history),
+	prolog,
+	halt.
+
+program_name(Name):-
+	source_file(main,N),
+	file_directory_name(N,D),
+	file_base_name(D,Name).
+
+	%current_prolog_flag(os_argv,OA),
+	%nth0(1,OA,N).
+
+main:-
+	OptSpec = [[
+		opt(render),
+		type(boolean),
+		default(true),
+		longflags(['render']),
+		help(['render audio to stdout',
+			'--no-render to disable'])
+	],[	opt(help),
+		type(boolean),
+		default(false),
+		shortflags([h]),
+		longflags(['help']),
+		help('print help')
+	],[	opt(quiet),
+		type(boolean),
+		default(false),
+		shortflags([q]),
+		longflags(['quiet']),
+		help('emit nothing to stderr')
+	],[	opt(prolog),
+		type(boolean),
+		default(false),
+		shortflags([p]),
+		longflags(['prolog']),
+		help('enter SWI-Prolog REPL')
+	]],
+
+	current_prolog_flag(argv,A),
+	opt_parse(OptSpec,A,O,_),
+	
+	(member(quiet(true),O) ; (
+		program_name(Name),
+		version(Ver),
+		say([Name," - Prolog Audio Synthesizer v",Ver,"\n"]),
+		(member(help(true),O) -> (
+			opt_help(OptSpec,H),
+			say(["\nCommand-line options:\n\n",H]),
+			halt
+		);true)
+	)),
+
+	( member(prolog(true),O) -> enter_repl ; true ),
+	( member(render(false),O) -> halt ; true ),
+	%timed_goal(pnote).
+	
+	set_stream(user_output,type(binary)),
+	trace,
+	timed_goal(seqnote).
 
 tune(jesuslovesme,pentatonic,432,1r2,[ %scaled, timed
 3,2,2,1,2,3,t(3,2),
@@ -248,7 +349,7 @@ t(5,2),t(9,2),12,flat(11),t(14,10),
 ]).
 
 ptune(holyholyholy,phrygian,432r4,1r4410,[ %phrygian?
-[5,7,9,12], [5,7,9,12], [3,5,12,14], [3,5,12,14]
+[t(5,2),7,9,12], [7,9,12], [3,5,12,14], [3,5,12,14]
 ]).
 
 modality([0,+2,+2,+1,+2,+2,+2,+1]).
