@@ -16,7 +16,7 @@ timetone(Time,Tone,L,t(Tone,M)):-number(L),number(M),Time is L * M.
 timetone(Time,Tone,Time,Tone):-number(Time).
 
 ostfm0(t(Ho,L),t(Hi,L)):-ostfm0(Ho,Hi).
-ostfm0(Ho,Hi):-Ho is 2 ** Hi / 12.
+ostfm0(2 ** ( Hi / 12 ),Hi).
 	
 note0(Ost,Chromatic,Scaled):-
 	ost(Ost,O),
@@ -86,9 +86,29 @@ ctsp([[Time,Event]|Tseqp],[[Time,[Event|Tn]]|Tctsp]):-
 		ctsp(Tseqp,Tctsp)
 	).
 
+
+
 %note(SampleCount,SampleStart,SampleEnd,SampleLen,Tone)
 sampleseq([],[]).
-sampleseq([[Time,[Event|Te]]|T],Ss).
+sampleseq([],[[_,[]]],_). % actual terminal?
+sampleseq([[_,[]],[Next|Notes]|Teli],[[]|Telo],Acc):- % end of current time
+	append(Acc,Notes,AccNotes),
+	sampleseq(Teli,[[Next,AccNotes]|Telo],Acc).
+
+sampleseq([[Time,[note(Len,Tone)|Te]]|Teli],[[TimeS,[N|Tes]]|Telo],AccI):-
+	rate(Rate),
+	TimeS is trunc(Time * Rate),
+	LenS is trunc(Len * Rate),
+	(	LenS =< TimeS	% event fits within timeseg
+	->(	N=note(LenS,Tone),
+		sampleseq([[Time,Te]|Teli],[[TimeS,Tes]|Telo],AccI)
+	);(	
+		RemS = LenS-TimeS
+		%append(AccI,[split(
+		% need to accumulate split notes... TODO
+		%N=split(
+	)).
+
 
 seqnote():-
 	rate(Rate),
@@ -244,7 +264,6 @@ main:-
 	%timed_goal(pnote).
 	
 	set_stream(user_output,type(binary)),
-	trace,
 	timed_goal(seqnote).
 
 tune(jesuslovesme,pentatonic,432,1r2,[ %scaled, timed
