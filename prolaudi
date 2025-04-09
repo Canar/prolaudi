@@ -73,19 +73,51 @@ timeseqp(TuneName,Seqp):-
 		Funct=..[note,Time,Rate*Key*Tone]
 		),Event,F)
 	),Tune,Seq),
+	sayl(['seq:'|Seq]),
 	seqp(Seq,Seqp),
+	sayl(['seqp:'|Seqp]),
 	ctsp(Seqp,C),
-	say([C]).
+	sayl(['c:'|C]),
+	lenseq(C,L),
+	sayl(['l:'|L]),!.
 
 %ctsp(Seqp,Ctsp).
 ctsp([],[]).
-ctsp([[Time,Event]|Tseqp],[[Time,[Event|Tn]]|Tctsp]):-
-	(	Tseqp=[[Time,_]|_] 
-	->	ctsp(Tseqp,[[Time,Tn]|Tctsp])
-	;	Tn=[],
-		ctsp(Tseqp,Tctsp)
-	).
+ctsp([[Time,Event],[Time,Eb]|Tseqp],[[Time,[Event|Tn]]|Tctsp]):-
+	ctsp([[Time,Eb]|Tseqp],[[Time,Tn]|Tctsp]).
+ctsp([[Time,Event]|Tseqp],[[Time,[Event]]|Tctsp]):-
+	ctsp(Tseqp,Tctsp).
+%ctsp([[Time,Event]|Tseqp],[[Time,[Event|Tn]]|Tctsp]):-
+%	->	Tim%	(	Tseqp=[[Time,_]|_] 
+%	->	ctsp(Tseqp,[[Time,Tn]|Tctsp])
+%	;	Tn=[],
+%		ctsp(Tseqp,Tctsp)
+%	).
 
+%lenseq([],[]).
+%lenseq([[Time,[note(Len,Tone)]]|Ti],[seg(Len,Time),[note(Len,Tone)]]|To):-
+%	lenseq(Ti,To).
+%lenseq(
+%	[[Time,			 [note(LenA,ToneA),note(LenB,ToneB)]]|Ti],
+%	[[seg(LenS,Time),[note(LenA,ToneA),note(LenB,ToneB)]]|To]
+%	):-
+%	minn(LenA,LenB,LenS),
+%	lenseq(Ti,To).
+%lenseq(
+%	[[Time,			 [note(LenA,ToneA),note(LenB,ToneB)|Tni]]|Ti],
+%	[[seg(LenS,Time),[note(LenA,ToneA),note(LenB,ToneB)|Tno]]|To]
+%	):-
+%	minn(LenA,LenB,LenS),
+%	lenseq(
+%		[[Time,          [note(LenB,ToneB)|Tni]]|Ti],
+%		[[seg(_,Time),[note(LenB,ToneB)|Tno]]|To]
+%	).
+
+lenseq([], []).
+lenseq([[Time, Notes] | Ti], [[seg(LenS, Time), Notes] | To]) :-
+    maplist([note(Len, _), Len]>>true, Notes, Lens),
+    min_list(Lens, LenS),
+    lenseq(Ti, To).
 
 
 %note(SampleCount,SampleStart,SampleEnd,SampleLen,Tone)
