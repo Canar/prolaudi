@@ -4,6 +4,7 @@
 ,	use_module(library(protobufs))
 ,	use_module(library(yall))
 ,	use_module(library(readline))
+,	use_module(library(process))
 .
 
 say(X):-maplist(write(user_error),X).
@@ -142,7 +143,7 @@ sampleseq([[Time,[note(Len,Tone)|Te]]|Teli],[[TimeS,[N|Tes]]|Telo],AccI):-
 	)).
 
 
-seqnote():-
+seqnote(Stream):-
 	rate(Rate),
 
 	TuneName=holyholyholy,
@@ -159,7 +160,7 @@ seqnote():-
 		maplist([Im]>>(
 			Sm is sin(2*pi* Tone * Key * (Im-1) / Rate),
 			protobufs:float32_codes(Sm,Cm),
-			maplist(put_byte(user_output),Cm)
+			maplist(put_byte(Stream),Cm)
 		),IndexList)
 	),Tune).
 
@@ -269,6 +270,18 @@ main:-
 		shortflags([q]),
 		longflags(['quiet']),
 		help('emit nothing to stderr')
+	],[	opt(stream),
+		type(boolean),
+		default(false),
+		shortflags([s]),
+		longflags(['stream']),
+		help('emit audio to pw-cat directly')
+	],[	opt(filter),
+		type(boolean),
+		default(false),
+		shortflags([f]),
+		longflags(['filter']),
+		help('filter audio according to dsp')
 	],[	opt(prolog),
 		type(boolean),
 		default(false),
@@ -295,8 +308,27 @@ main:-
 	( member(render(false),O) -> halt ; true ),
 	%timed_goal(pnote).
 	
-	set_stream(user_output,type(binary)),
-	timed_goal(seqnote).
+	rate(Rate),
+	(	member(stream(true),O) 
+	->	(	member(filter(true),O)
+		->	
+			process_create(path('cat'),[],[stdin(pipe(Stream)),stdout(pipe(FilterStream))]),
+			process_create(path('pw-cat'),['--playback','--format','f32','--rate',Rate,'--channels','1','-'],[stdin(stream(FilterStream))])
+		;	process_create(path('pw-cat'),['--playback','--format','f32','--rate',Rate,'--channels','1','-'],[stdin(pipe(Stream))])
+		)
+	;	Stream=user_output
+	),
+	%set_stream(Stream,type(binary)),
+	timed_goal(seqnote(Stream)),
+	flush_output(Stream),
+	close(Stream),
+	!.
+			%process_create(path('ffmpeg'),['-hide_banner','-f','f32le','-ar',Rate,'-channel_layout','mono','-i','-','-'],[stdin(pipe(Stream)),stdout(pipe(FilterStream))]),
+
+			%process_create(path('ffmpeg'),['-hide_banner','-f','f32le','-ar',Rate,'-channel_layout','mono','-i','-','-af','ladspa=file=tap_reverb:tap_reverb','-f','f32le','-acodec','pcm_f32le','-'],[stdin(pipe(Stream)),stdout(pipe(FilterStream))]),
+
+%process_create(path('ffmpeg'),['-f','f32le','-ar',SR,'-ac','1','-i','pipe:0','-af','flanger','-f','s16le','-acodec','pcm_f16le','pipe:1'],[stdin(pipe(Stream)),stdout(pipe(FFmpegOut))]),
+%process_create(path('pw-cat'),['--playback','--format','f32','--rate',SR,'--channels','1'],[stdin(FFmpegOut)])
 
 tune(jesuslovesme,pentatonic,432,1r2,[ %scaled, timed
 3,2,2,1,2,3,t(3,2),
