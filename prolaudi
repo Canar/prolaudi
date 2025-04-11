@@ -72,39 +72,15 @@ timeseqp(TuneName,Seqp):-
 	ctsp(Seqp,C),
 	sayl(['c:'|C]),
 	lenseq(C,L),
-	sayl(['l:'|L]),!.
+	sayl(['l:'|L]),
+	trace,
+	sampleseq(L,SS).
 
-%ctsp(Seqp,Ctsp).
 ctsp([],[]).
 ctsp([[Time,Event],[Time,Eb]|Tseqp],[[Time,[Event|Tn]]|Tctsp]):-
 	ctsp([[Time,Eb]|Tseqp],[[Time,Tn]|Tctsp]).
 ctsp([[Time,Event]|Tseqp],[[Time,[Event]]|Tctsp]):-
 	ctsp(Tseqp,Tctsp).
-%ctsp([[Time,Event]|Tseqp],[[Time,[Event|Tn]]|Tctsp]):-
-%	->	Tim%	(	Tseqp=[[Time,_]|_] 
-%	->	ctsp(Tseqp,[[Time,Tn]|Tctsp])
-%	;	Tn=[],
-%		ctsp(Tseqp,Tctsp)
-%	).
-
-%lenseq([],[]).
-%lenseq([[Time,[note(Len,Tone)]]|Ti],[seg(Len,Time),[note(Len,Tone)]]|To):-
-%	lenseq(Ti,To).
-%lenseq(
-%	[[Time,			 [note(LenA,ToneA),note(LenB,ToneB)]]|Ti],
-%	[[seg(LenS,Time),[note(LenA,ToneA),note(LenB,ToneB)]]|To]
-%	):-
-%	minn(LenA,LenB,LenS),
-%	lenseq(Ti,To).
-%lenseq(
-%	[[Time,			 [note(LenA,ToneA),note(LenB,ToneB)|Tni]]|Ti],
-%	[[seg(LenS,Time),[note(LenA,ToneA),note(LenB,ToneB)|Tno]]|To]
-%	):-
-%	minn(LenA,LenB,LenS),
-%	lenseq(
-%		[[Time,          [note(LenB,ToneB)|Tni]]|Ti],
-%		[[seg(_,Time),[note(LenB,ToneB)|Tno]]|To]
-%	).
 
 lenseq([], []).
 lenseq([[Time, Notes] | Ti], [[seg(LenS, Time), Notes] | To]) :-
@@ -115,20 +91,23 @@ lenseq([[Time, Notes] | Ti], [[seg(LenS, Time), Notes] | To]) :-
 
 %note(SampleCount,SampleStart,SampleEnd,SampleLen,Tone)
 sampleseq([],[]).
+sampleseq(L,SS):-sampleseq(L,SS,[]).
 sampleseq([],[[_,[]]],_). % actual terminal?
 sampleseq([[_,[]],[Next|Notes]|Teli],[[]|Telo],Acc):- % end of current time
 	append(Acc,Notes,AccNotes),
 	sampleseq(Teli,[[Next,AccNotes]|Telo],Acc).
 
-sampleseq([[Time,[note(Len,Tone)|Te]]|Teli],[[TimeS,[N|Tes]]|Telo],AccI):-
+sampleseq([[seg(Slen,Time),[note(Len,Tone)|Te]]|Teli],[[seg(SlenS,TimeS),[N|Tes]]|Telo],AccI):-
 	rate(Rate),
-	TimeS is trunc(Time * Rate),
-	LenS is trunc(Len * Rate),
-	(	LenS =< TimeS	% event fits within timeseg
+	SlenS is truncate(Slen * Rate),
+	LenS is truncate(Len * Rate),
+	(	LenS =< SlenS	% event fits within timeseg
 	->(	N=note(LenS,Tone),
 		sampleseq([[Time,Te]|Teli],[[TimeS,Tes]|Telo],AccI)
 	);(	
-		RemS = LenS-TimeS
+		RemS = LenS-Slens,
+		N=note(StartS,RemS,Tone),
+		sampleseq([[seg(Slen,Time),Te]|Teli],[[seg(SlenS,TimeS),Tes]|Telo],AccI)
 		%append(AccI,[split(
 		% need to accumulate split notes... TODO
 		%N=split(
@@ -238,9 +217,6 @@ program_name(Name):-
 	source_file(main,N),
 	file_directory_name(N,D),
 	file_base_name(D,Name).
-
-	%current_prolog_flag(os_argv,OA),
-	%nth0(1,OA,N).
 
 timed_goal(Goal):-
 	get_time(StartTime),
