@@ -90,27 +90,37 @@ lenseq([[Time, Notes] | Ti], [[seg(LenS, Time), Notes] | To]) :-
     lenseq(Ti, To).
 
 
-%note(SampleCount,SampleStart,SampleEnd,SampleLen,Tone)
+%note(Length,Tone)
+%note(Start,Length,Tone) - Start=3, Length=4 results in note of size 1.
 sampleseq([],[]).
 sampleseq(L,SS):-sampleseq(L,SS,[]).
 sampleseq([],[[_,[]]],_). % actual terminal?
-sampleseq([[_,[]]],[[_,[]]],_). % Handle single empty segment
-sampleseq([[_,[]],[Next,Notes]|Teli],[[_,_]|Telo],Acc):- % end of current time
+sampleseq([[_,[]]],[[_,[]]],[]). % Handle single empty segment
+sampleseq([[seg(Slen,Time),[]]],[[seg(Slen,Time),[]]|O],Acc):- % end of times, still have Acc
+	ST is Slen+Time,
+	sampleseq([[seg(Slen,ST),Acc]],O,[]).
+sampleseq([[_,[]],[Next,Notes]|Teli],[[_,[]]|Telo],Acc):- % end of current time
 	append(Acc,Notes,AccNotes),
 	sampleseq([[Next,AccNotes]|Teli],Telo,[]).
 
-sampleseq([[seg(Slen,Time),[note(Len,Tone)|Te]]|Teli],[[seg(SlenS,TimeS),[N|Tes]]|Telo],AccI):-
-	rate(Rate),
-	( var(SlenS) ->	SlenS is truncate(Slen * Rate) ; true ),
-	LenS is truncate(Len * Rate),
-	(	LenS =< SlenS	% event fits within timeseg
-	->(	N=note(LenS,Tone),
-		sampleseq([[seg(Slen,Time),Te]|Teli],[[TimeS,Tes]|Telo],AccI)
+sampleseq([[seg(Slen,Time),[note(Len,Tone)|Te]]|Teli],[[seg(Slen,Time),[N|Tes]]|Telo],AccI):-
+	(	Len =< Slen	% event fits within timeseg
+	->(	N=note(Len,Tone),
+		sampleseq([[seg(Slen,Time),Te]|Teli],[[seg(Slen,Time),Tes]|Telo],AccI)
 	);(	
-		RemS = LenS-SlenS,
 		Rem is Len-Slen,
 		N=note(Slen,Rem,Tone),
-		sampleseq([[seg(Slen,Time),Te]|Teli],[[seg(SlenS,TimeS),Tes]|Telo],[note(Slen,Time,Tone)|AccI])
+		sampleseq([[seg(Slen,Time),Te]|Teli],[[seg(Slen,Time),Tes]|Telo],[note(Slen,Len,Tone)|AccI])
+	)).
+sampleseq([[seg(Slen,Time),[note(Start,Len,Tone)|Te]]|Teli],[[seg(Slen,Time),[N|Tes]]|Telo],AccI):-
+	Rem is Len - Start,
+	(	Rem =< Slen	% event fits within timeseg
+	->(	N=note(Start,Len,Tone),
+		sampleseq([[seg(Slen,Time),Te]|Teli],[[seg(Slen,Time),Tes]|Telo],AccI)
+	);(	
+		Next is Start+Slen,
+		N=note(Start,Next,Tone),
+		sampleseq([[seg(Slen,Time),Te]|Teli],[[seg(Slen,Time),Tes]|Telo],[note(Next,Len,Tone)|AccI])
 	)).
 
 
@@ -402,7 +412,7 @@ ptune(holyholyholy,phrygian,432r4,1r4410,[ %phrygian?
 ]).
 
 ptune(ht,phrygian,432r4,1r441,[
-[t(5,2),7],[9]
+[t(5,3),7],[9]
 ]).
 modality([0,+2,+2,+1,+2,+2,+2,+1]).
 
