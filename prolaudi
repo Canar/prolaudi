@@ -92,7 +92,6 @@ lenseq([[Time, Notes] | Ti], [[seg(LenS, Time), Notes] | To]) :-
 
 %note(Length,Tone)
 %note(Start,Length,Tone) - Start=3, Length=4 results in note of size 1.
-sampleseq([],[]).
 sampleseq(L,SS):-sampleseq(L,SS,[]).
 sampleseq([],[[_,[]]],_). % actual terminal?
 sampleseq([[_,[]]],[[_,[]]],[]). % Handle single empty segment
@@ -122,6 +121,11 @@ sampleseq([[seg(Slen,Time),[note(Start,Len,Tone)|Te]]|Teli],[[seg(Slen,Time),[N|
 		N=note(Start,Next,Tone),
 		sampleseq([[seg(Slen,Time),Te]|Teli],[[seg(Slen,Time),Tes]|Telo],[note(Next,Len,Tone)|AccI])
 	)).
+
+split_note(Slen,note(Len,Tone),Slen,note(Len,Tone),none) :- Len =< Slen.
+split_note(Slen,note(Len,Tone),Slen,note(Len,Tone),note(Slen,Rem,Tone)) :- Rem is Len - Slen,Rem>0.
+split_note(Slen,note(Start,Len,Tone),Slen,note(Start,Len,Tone),none) :- Start+Slen >= Len.
+split_note(Slen,note(Start,Len,Tone),Slen,note(Start,End,Tone),note(End,Len,Tone)) :- End is Start+Slen,End<Len.
 
 
 seqnote(Stream):-
