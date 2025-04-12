@@ -74,7 +74,8 @@ timeseqp(TuneName,Seqp):-
 	lenseq(C,L),
 	sayl(['l:'|L]),
 	trace,
-	sampleseq(L,SS).
+	sampleseq(L,SS),
+	sayl(['ss:'|SS]).
 
 ctsp([],[]).
 ctsp([[Time,Event],[Time,Eb]|Tseqp],[[Time,[Event|Tn]]|Tctsp]):-
@@ -93,24 +94,23 @@ lenseq([[Time, Notes] | Ti], [[seg(LenS, Time), Notes] | To]) :-
 sampleseq([],[]).
 sampleseq(L,SS):-sampleseq(L,SS,[]).
 sampleseq([],[[_,[]]],_). % actual terminal?
-sampleseq([[_,[]],[Next|Notes]|Teli],[[]|Telo],Acc):- % end of current time
+sampleseq([[_,[]]],[[_,[]]],_). % Handle single empty segment
+sampleseq([[_,[]],[Next,Notes]|Teli],[[_,_]|Telo],Acc):- % end of current time
 	append(Acc,Notes,AccNotes),
-	sampleseq(Teli,[[Next,AccNotes]|Telo],Acc).
+	sampleseq([[Next,AccNotes]|Teli],Telo,[]).
 
 sampleseq([[seg(Slen,Time),[note(Len,Tone)|Te]]|Teli],[[seg(SlenS,TimeS),[N|Tes]]|Telo],AccI):-
 	rate(Rate),
-	SlenS is truncate(Slen * Rate),
+	( var(SlenS) ->	SlenS is truncate(Slen * Rate) ; true ),
 	LenS is truncate(Len * Rate),
 	(	LenS =< SlenS	% event fits within timeseg
 	->(	N=note(LenS,Tone),
-		sampleseq([[Time,Te]|Teli],[[TimeS,Tes]|Telo],AccI)
+		sampleseq([[seg(Slen,Time),Te]|Teli],[[TimeS,Tes]|Telo],AccI)
 	);(	
-		RemS = LenS-Slens,
-		N=note(StartS,RemS,Tone),
-		sampleseq([[seg(Slen,Time),Te]|Teli],[[seg(SlenS,TimeS),Tes]|Telo],AccI)
-		%append(AccI,[split(
-		% need to accumulate split notes... TODO
-		%N=split(
+		RemS = LenS-SlenS,
+		Rem is Len-Slen,
+		N=note(Slen,Rem,Tone),
+		sampleseq([[seg(Slen,Time),Te]|Teli],[[seg(SlenS,TimeS),Tes]|Telo],[note(Slen,Time,Tone)|AccI])
 	)).
 
 
@@ -401,6 +401,9 @@ ptune(holyholyholy,phrygian,432r4,1r4410,[ %phrygian?
 [t(5,2),7,9,12], [7,9,12], [3,5,12,14], [3,5,12,14]
 ]).
 
+ptune(ht,phrygian,432r4,1r441,[
+[t(5,2),7],[9]
+]).
 modality([0,+2,+2,+1,+2,+2,+2,+1]).
 
 %octave scale twelve-tet
