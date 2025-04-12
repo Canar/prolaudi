@@ -122,6 +122,15 @@ sampleseq([[seg(Slen,Time),[note(Start,Len,Tone)|Te]]|Teli],[[seg(Slen,Time),[N|
 		sampleseq([[seg(Slen,Time),Te]|Teli],[[seg(Slen,Time),Tes]|Telo],[note(Next,Len,Tone)|AccI])
 	)).
 
+process_notes(_,[],[],[]).
+process_notes(Slen,[Note|Notes],Slen,[Split|Processed],Acc):-
+	split_note(Slen,Note,Split,Remainder),
+	(	Remainder = none
+	->	process_notes(Slen,Notes,Processed,Acc)
+	;	Acc = [Remainder|NewAcc],
+		process_notes(Slen,Notes,NewAcc
+	).
+
 split_note(Slen,note(Len,Tone),Slen,note(Len,Tone),none) :- Len =< Slen.
 split_note(Slen,note(Len,Tone),Slen,note(Len,Tone),note(Slen,Rem,Tone)) :- Rem is Len - Slen,Rem>0.
 split_note(Slen,note(Start,Len,Tone),Slen,note(Start,Len,Tone),none) :- Start+Slen >= Len.
