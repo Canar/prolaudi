@@ -93,6 +93,8 @@ lenseq([[Time, Notes] | Ti], [[seg(LenS, Time), Notes] | To]) :-
 %note(Length,Tone)
 %note(Start,Length,Tone) - Start=3, Length=4 results in note of size 1.
 sampleseq(L,SS):-sampleseq(L,SS,[]).
+
+/*
 sampleseq([],[[_,[]]],_). % actual terminal?
 sampleseq([[_,[]]],[[_,[]]],[]). % Handle single empty segment
 sampleseq([[seg(Slen,Time),[]]],[[seg(Slen,Time),[]]|O],Acc):- % end of times, still have Acc
@@ -122,19 +124,65 @@ sampleseq([[seg(Slen,Time),[note(Start,Len,Tone)|Te]]|Teli],[[seg(Slen,Time),[N|
 		sampleseq([[seg(Slen,Time),Te]|Teli],[[seg(Slen,Time),Tes]|Telo],[note(Next,Len,Tone)|AccI])
 	)).
 
+*/ 
+
+sampleseq([],[],[]).
+%sampleseq([],O,A):-
+%	length(A,Len),
+%	(	Len > 0
+%	->	sampleseq(A,O,[])
+%	;	O=[]
+%	).
+%		
+%sampleseq([],[[seg(Slen,Time),Split]|SS],Acc) :-
+%	process_notes(Slen,Acc,Split,Remainder),
+%	(	Remainder = []
+%	->	SS=[]
+%	;	TimeNew is Time+Slen,
+%		SS=[[seg(Slen,TimeNew),Remainder]|_],
+%		sampleseq([],SS,[])
+%	).
+
+%sampleseq([[seg(Slen,Time),Notes]], [[seg(Slen,Time),Processed]|SS], Acc) :-
+%	append(Acc,Notes,AllNotes),
+%	process_notes(Slen,AllNotes,Processed,NewAcc),
+%	(	NewAcc \= []
+%	->	NewTime is Time+Slen,
+%		sampleseq([[seg(Slen,NewTime),NewAcc]],SS,[])
+%	;	SS=[]
+%	),!.
+
+
+sampleseq([[seg(Slen,Time),Notes]|Rest], [[seg(Slen,Time),Processed]|SS], Acc) :-
+    append(Acc,Notes,AllNotes),
+    process_notes(Slen,AllNotes,Processed,NewAcc),
+    (   Rest = [], NewAcc \= []
+    ->  NewTime is Time + Slen,
+        sampleseq([[seg(Slen,NewTime),NewAcc]], SS, [])
+    ;   sampleseq(Rest, SS, NewAcc)
+    ).
+
+%sampleseq([[seg(Slen,Time),Notes]|Rest], [[seg(Slen,Time),Processed]|SS], Acc) :-
+%	append(Acc,Notes,AllNotes),
+%	process_notes(Slen,AllNotes,Processed,NewAcc),
+%	sampleseq(Rest,SS,NewAcc).
+
 process_notes(_,[],[],[]).
-process_notes(Slen,[Note|Notes],Slen,[Split|Processed],Acc):-
-	split_note(Slen,Note,Split,Remainder),
+%process_notes(S,[],O,A):-var(O),process_notes(S,A,O,[]).
+%process_notes(_,[],[],Acc) :- last(Acc,L),var(L),L=[].
+%    process_notes(Slen, Acc, Processed, []).
+process_notes(Slen,[Note|Notes],[Split|Processed],Acc):-
+	split_note(Slen,Note,Split,Remainder),!,
 	(	Remainder = none
 	->	process_notes(Slen,Notes,Processed,Acc)
-	;	Acc = [Remainder|NewAcc],
-		process_notes(Slen,Notes,NewAcc
+	;	Acc=[Remainder|NewAcc],
+		process_notes(Slen,Notes,Processed,NewAcc)
 	).
 
-split_note(Slen,note(Len,Tone),Slen,note(Len,Tone),none) :- Len =< Slen.
-split_note(Slen,note(Len,Tone),Slen,note(Len,Tone),note(Slen,Rem,Tone)) :- Rem is Len - Slen,Rem>0.
-split_note(Slen,note(Start,Len,Tone),Slen,note(Start,Len,Tone),none) :- Start+Slen >= Len.
-split_note(Slen,note(Start,Len,Tone),Slen,note(Start,End,Tone),note(End,Len,Tone)) :- End is Start+Slen,End<Len.
+split_note(Slen,note(Len,Tone),note(Len,Tone),none) :- Len =< Slen.
+split_note(Slen,note(Len,Tone),note(Slen,Tone),note(Slen,Len,Tone)) :- Rem is Len - Slen,Rem>0.
+split_note(Slen,note(Start,Len,Tone),note(Start,Len,Tone),none) :- Start+Slen >= Len.
+split_note(Slen,note(Start,Len,Tone),note(Start,End,Tone),note(End,Len,Tone)) :- End is Start+Slen,End<Len.
 
 
 seqnote(Stream):-
