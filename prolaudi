@@ -54,7 +54,7 @@ seqp(In,Out):-
 	seqp_(0,In,Oz),
 	append(Oz,Out).
 
-timeseqp(TuneName):-
+render_ptune(TuneName,Stream):-
 	rate(Rate),
 	ptune(TuneName,Scale,Key,Notelen,Tune),
 
@@ -75,8 +75,6 @@ timeseqp(TuneName):-
 	%sayl(['l:'|L]),
 	sampleseq(L,SS),
 	%sayl(['ss:'|SS]).
-	trace,
-	filtered_device_stream(Stream,Rate),
 	render_notes(SS,Stream).
 
 ctsp([],[]).
@@ -121,8 +119,9 @@ render_notes([[_,Notes]|Ti],Stream):-
 	maplist([Note,O]>>(
 		render_note(Note,O)
 	),Notes,Os),
-	transpose(Os,Ot),
-	maplist([Samples,Sum]>>sumlist(Samples,Sum),Ot,Sums),
+	%transpose(Os,Ot),
+	%maplist([Samples,Sum]>>sumlist(Samples,Sum),Ot,Sums),
+	repose(Os,Sums),
 	maplist([F]>>(
 		protobufs:float32_codes(F,C),
 		maplist(put_byte(Stream),C)
@@ -132,12 +131,21 @@ render_notes([[_,Notes]|Ti],Stream):-
 render_note(note(Len,Tone),O):-render_note(note(0,Len,Tone),O).
 render_note(note(Start,Len,Tone),O):-
 	rate(Rate),
+	Coeff is 2 * pi / Rate,
 	StartS is truncate(Start*Rate),
 	LenS is truncate(Len*Rate)-1,
 	numlist(StartS,LenS,IndexList),
 	maplist([Index,BufferOutM]>>(
-		BufferOutM is sin(2*pi* Tone * Index / Rate)
+		BufferOutM is sin(Coeff * Tone * Index)
 	),IndexList,O).
+
+repose([], []).
+repose([[]|_], []).
+repose(Lists, [Val|Rows]) :-
+    maplist(nth0(0), Lists, Row),
+	sumlist(Row,Val),
+    maplist(tail, Lists, Tails),
+    repose(Tails, Rows).
 
 transpose([], []).
 transpose([[]|_], []).
@@ -275,6 +283,8 @@ filtered_device_stream(Stream,Filter,Rate,1):-
 	),
 	set_stream(Stream,type(binary)).
 
+stdout_stream(user_output) :- set_stream(user_output,type(binary)).
+
 main:-
 	OptSpec = [[
 		opt(render),
@@ -336,14 +346,13 @@ main:-
 	rate(Rate),
 	(	member(stream(true),O) 
 	->	(	member(filter(true),O)
-		->	process_create(path('pw-cat'),['--playback','--format','f32','--rate',Rate,'--channels','2','-'],[stdin(pipe(FilterStream))]), %process order matters!
-			process_create(path('ffmpeg'),['-hide_banner','-loglevel','warning','-f','f32le','-ar',Rate,'-channel_layout','mono','-i','-','-af','ladspa=file=tap_reverb:tap_reverb','-f','f32le','-acodec','pcm_f32le','-'],[stdin(pipe(Stream)),stdout(stream(FilterStream))])
-		;	process_create(path('pw-cat'),['--playback','--format','f32','--rate',Rate,'--channels','1','-'],[stdin(pipe(Stream))])
+		->	filtered_device_stream(Stream,Rate)
+		;	device_stream(Stream,Rate,1)
 		)
-	;	Stream=user_output
+	;	stdout_stream(Stream)
 	),
-	set_stream(Stream,type(binary)),
-	timed_goal(seqnote(Stream)),
+	timed_goal(render_ptune(holyholyholy,Stream)),
+	%timed_goal(seqnote(Stream)),
 	!.
 
 tune(jesuslovesme,pentatonic,432,1r2,[ %scaled, timed
