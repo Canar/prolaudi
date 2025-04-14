@@ -66,15 +66,10 @@ render_ptune(TuneName,Stream):-
 		Funct=..[note,Time,Key*Tone]
 		),Event,F)
 	),Tune,Seq),
-	%sayl(['seq:'|Seq]),
 	seqp(Seq,Seqp),
-	%sayl(['seqp:'|Seqp]),
 	ctsp(Seqp,C),
-	%sayl(['c:'|C]),
 	lenseq(C,L),
-	%sayl(['l:'|L]),
 	sampleseq(L,SS),
-	%sayl(['ss:'|SS]).
 	render_notes(SS,Stream).
 
 ctsp([],[]).
@@ -268,8 +263,14 @@ timed_goal(Goal):-
 	TakenTime is EndTime-StartTime,
 	say(['Time taken: ',TakenTime,"\n"]).
 
+pwcat_stream(Stream,Rate,Channels):-
+	process_create(path('pw-cat'),['--playback','--format','f32','--rate',Rate,'--channels',Channels,'-'],[stdin(pipe(Stream))]).
+
+aaw_stream(Stream):-
+	process_create('../2b/AAudio-write',[],[stdin(pipe(Stream))]).
+
 device_stream(Stream,Rate,Channels):-
-	process_create(path('pw-cat'),['--playback','--format','f32','--rate',Rate,'--channels',Channels,'-'],[stdin(pipe(Stream))]),
+	pwcat_stream(Stream,Rate,Channels),
 	set_stream(Stream,type(binary)).
 
 filtered_device_stream(Stream,Rate):-
@@ -375,7 +376,7 @@ tune(holyholyholy,phrygian,432r4,1r12,[ %phrygian?
 2,6,11,t(16,5), 2,8,t(13,6), 5,7,12,t(16,5), 5,9,t(11,6),
 %l             o          rd         god             al
 1,8,10,t(17,5), 1,9,11,17, 1,9,11,17, 8,10,12,t(17,5), 8,11,13,t(17,5),
-%mi             gh             ty
+%mi              gh              ty
 5,11,14,t(16,5), 5,9,14,t(16,5), t(5,2),t(9,2),t(12,2),t(14,10),
 
 %early in the morn
@@ -455,16 +456,76 @@ t(5,2),t(9,2),12,flat(11),t(14,10),
 5,8,12
 
 ]).
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ptune(holyholyholy,phrygian,432r4,1,[ %phrygian?
-[5,7,9,12], [5,7,9,12], [3,5,12,14], [3,5,12,14],
+/*
+%ho        ly         ho          ly
+[5,7,9,12],[5,7,9,12],[3,5,12,14],[3,5,12,14],
+%h                    o      l                     y
+[t(2,2),6,11,t(16,2)],[8,13],[t(5,2),7,10,t(16,2)],[9,9],
+%lo         rd          god           al
+[1,8,10,17],[1,9,11,17],[8,10,12,17], [8,11,13,17],
+%mi          gh          ty
+[5,11,14,16],[5,9,14,16],[t(5,2),t(9,2),t(12,2),t(14,2)],
+*/
+%ear                                 ly                    in           the
+[4,11,13,t(16,3r2)],[4,11,t(13,1r2)],[t(13,1r2),t(16,1r2)],[4,12,14,16],[4,11,13,16],
+%mo         rn                 ing         our
+[3,7,12,19],[3,sharp(8),13,19],[4,9,13,18],[5,9,14,16],
+%song     shall       rise
+[6,11,13],[6,9,11,16],[t(6,3r2),t(sharp(8),3r2),t(12,3r2),t(17,3r2)],
+%to                                      thee
+[t(2,1r2),t(9,1r2),t(11,1r2),t(16,1r2)], [t(2,4),t(9,2),t(11,4),t(16,4)],[t(8,2)]
 
-[t(2,2),6,11,t(16,2)],[8,13],
-[t(5,2),7,10,t(16,2)],[9,9]
-%h             o           l              y
-%2,6,11,t(16,5), 2,8,t(13,6), 5,7,12,t(16,5), 5,9,t(11,6),
-%l             o          rd         god             al
-%1,8,10,t(17,5), 1,9,11,17, 1,9,11,17, 8,10,12,t(17,5), 8,11,13,t(17,5),
+/*
+%2nd loop - holyholyholy
+
+5,7,9,t(12,5),
+5,7,9,t(12,5),
+3,5,12,t(14,5),
+3,5,12,t(14,5),
+
+2,6,11,t(16,5),
+2,8,13,t(16,5),
+5,7,12,t(16,5),
+5,9,t(11,6),
+
+1,8,10,t(17,5),
+1,9,11,17,
+1,9,11,17,
+8,10,12,t(17,5),
+8,11,13,t(17,5),
+
+5,11,14,t(16,5),
+5,9,14,t(16,5),
+t(5,2),t(9,2),t(12,2),t(16,10),
+
+
+%god in three
+t(3,2),7,8,t(12,2),t(19,10),
+0,9,12,t(16,5),
+0,flat(11),12,t(16,5),
+
+t(1,2),t(10,2),t(12,2),t(17,10),
+t(5,2),t(9,2),12,flat(11),t(14,10),
+
+1,8,11,t(15,5),
+1,8,11,t(13,5),
+2,9,11,t(13,5),
+2,9,11,13,
+5,8,12,
+6,8,11,
+7,8,10,
+6,8,11,
+5,8,12,
+5,16,12,
+5,14,12,
+5,10,12,
+5,8,12,
+5,8,12,
+5,8,12,
+5,8,12
+*/
 ]).
 
 ptune(ht,phrygian,432r4,1r441,[
