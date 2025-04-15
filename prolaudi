@@ -266,23 +266,30 @@ timed_goal(Goal):-
 pwcat_stream(Stream,Rate,Channels):-
 	process_create(path('pw-cat'),['--playback','--format','f32','--rate',Rate,'--channels',Channels,'-'],[stdin(pipe(Stream))]).
 
+paplay_stream(Stream,Rate,Channels):-
+	process_create(path(paplay),['--raw','--format','float32le','--rate',Rate,'--channels',Channels],[stdin(pipe(Stream))]).
+
 aaw_stream(Stream):-
 	process_create('../2b/AAudio-write',[],[stdin(pipe(Stream))]).
 
 device_stream(Stream,Rate,Channels):-
-	pwcat_stream(Stream,Rate,Channels),
+	%aaw_stream(Stream),
+	%pwcat_stream(Stream,Rate,Channels),
+	paplay_stream(Stream,Rate,Channels),
 	set_stream(Stream,type(binary)).
 
 filtered_device_stream(Stream,Rate):-
-	filtered_device_stream(Stream,'ladspa=file=tap_reverb:tap_reverb',Rate,1).
+	%filtered_device_stream(Stream,'ladspa=file=tap_reverb:tap_reverb',Rate,1),
+	filtered_device_stream(Stream,'dynaudnorm',Rate,1),
+	set_stream(Stream,type(binary)).
 
 filtered_device_stream(Stream,Filter,Rate,1):-
-	device_stream(FilterStream,Rate,2),
+	device_stream(FilterStream,Rate,1),
+	%device_stream(FilterStream,Rate,2),
 	process_create(path('ffmpeg'),
 		['-hide_banner','-loglevel','warning','-f','f32le','-ar',Rate,'-channel_layout','mono','-i','-','-af',Filter,'-f','f32le','-acodec','pcm_f32le','-'],
 		[stdin(pipe(Stream)),stdout(stream(FilterStream))]
-	),
-	set_stream(Stream,type(binary)).
+	).
 
 stdout_stream(user_output) :- set_stream(user_output,type(binary)).
 
