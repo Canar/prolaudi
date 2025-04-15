@@ -277,6 +277,10 @@ platform_stream(termux,Stream,Rate,Channels):-paplay_stream(Stream,Rate,Channels
 %platform_stream(termux,Stream,Rate,1):-aaw_stream(Stream).
 
 
+device_stream(Stream,Channels):-
+	rate(Rate),
+	device_stream(Stream,Rate,Channels).
+
 device_stream(Stream,Rate,Channels):-
 	platform(P),
 	platform_stream(P,Stream,Rate,Channels),
@@ -287,13 +291,29 @@ ffmpeg_in_out(In,Out,Filter):-
 	process_create(path('ffmpeg'),
 		['-hide_banner','-loglevel','warning','-f','f32le','-ar',Rate,'-channel_layout','mono','-i','-','-af',Filter,'-f','f32le','-acodec','pcm_f32le','-'],
 		[stdin(pipe(In)),stdout(stream(Out))]
-	).
+	),
+	set_stream(In,type(binary)).
+
+filter_config(reverb,2,'ladspa=file=tap_reverb:tap_reverb'):-platform(linux).
+filter_config(normal,1,'dynaudnorm').
+platform_filter(linux,reverb).
+platform_filter(termux,normal).
+
+filter_chan(Chan):-
+	platform(P),
+	platform_filter(P,F),
+	filter_config(F,Chan,_).
+
+filter_stream(In,Out):-
+	platform(Plat),
+	platform_filter(Plat,Filt),
+	filter_config(Filt,Chan,Config),
+	ffmpeg_in_out(In,Out,Config).
 
 platform_filter_stream(linux,In,Out,2):-
 	ffmpeg_in_out(In,Out,'ladspa=file=tap_reverb:tap_reverb').
 platform_filter_stream(termux,In,Out,1):-
 	ffmpeg_in_out(In,Out,'dynaudnorm').
-
 
 filtered_device_stream(Stream,Rate):-
 	%filtered_device_stream(Stream,'ladspa=file=tap_reverb:tap_reverb',Rate,1),
@@ -379,6 +399,14 @@ main:-
 	( member(render(false),O) -> halt ; true ),
 	%timed_goal(pnote).
 	
+	/*
+	( member(stream(true),O) ; 
+	 */
+	( member(filter(true),O) -> filter_chan(Chan) ; Chan=1 ),
+	( member(stream(true),O) -> device_stream(Dev,Chan) ; stdout_stream(Dev) ),
+	( member(filter(true),O) -> filter_stream(Write,Dev) ; Write=Dev ),
+
+	/*
 	rate(Rate),
 	(	member(stream(true),O) 
 	->	(	member(filter(true),O)
@@ -387,7 +415,8 @@ main:-
 		)
 	;	stdout_stream(Stream)
 	),
-	timed_goal(render_ptune(holyholyholy,Stream)),
+	*/
+	timed_goal(render_ptune(holyholyholy,Write)),
 	%timed_goal(seqnote(Stream)),
 	!.
 
