@@ -272,11 +272,28 @@ paplay_stream(Stream,Rate,Channels):-
 aaw_stream(Stream):-
 	process_create('../2b/AAudio-write',[],[stdin(pipe(Stream))]).
 
+platform_stream(linux,Stream,Rate,Channels):-pwcat_stream(Stream,Rate,Channels).
+platform_stream(termux,Stream,Rate,Channels):-paplay_stream(Stream,Rate,Channels).
+%platform_stream(termux,Stream,Rate,1):-aaw_stream(Stream).
+
+
 device_stream(Stream,Rate,Channels):-
-	%aaw_stream(Stream),
-	%pwcat_stream(Stream,Rate,Channels),
-	paplay_stream(Stream,Rate,Channels),
+	platform(P),
+	platform_stream(P,Stream,Rate,Channels),
 	set_stream(Stream,type(binary)).
+
+ffmpeg_in_out(In,Out,Filter):-
+	rate(Rate),
+	process_create(path('ffmpeg'),
+		['-hide_banner','-loglevel','warning','-f','f32le','-ar',Rate,'-channel_layout','mono','-i','-','-af',Filter,'-f','f32le','-acodec','pcm_f32le','-'],
+		[stdin(pipe(In)),stdout(stream(Out))]
+	).
+
+platform_filter_stream(linux,In,Out,2):-
+	ffmpeg_in_out(In,Out,'ladspa=file=tap_reverb:tap_reverb').
+platform_filter_stream(termux,In,Out,1):-
+	ffmpeg_in_out(In,Out,'dynaudnorm').
+
 
 filtered_device_stream(Stream,Rate):-
 	%filtered_device_stream(Stream,'ladspa=file=tap_reverb:tap_reverb',Rate,1),
@@ -293,7 +310,28 @@ filtered_device_stream(Stream,Filter,Rate,1):-
 
 stdout_stream(user_output) :- set_stream(user_output,type(binary)).
 
+print_banner(O,OptSpec) :-
+	name(Name),
+	version(Ver),
+	say([Name," - Prolog Audio Synthesizer v",Ver,"\n"]),
+	(member(help(true),O) -> (
+		opt_help(OptSpec,H),
+		say(["\nCommand-line options:\n\n",H]),
+		halt
+	);true).
+
+who_am_i:-
+	source_file(main,N),
+	assert(exec(N)),
+	file_directory_name(N,D),
+	assert(dir(D)),
+	file_base_name(D,Name),
+	assert(name(Name)),
+	atomic_list_concat([D,'/platform'],Dp),
+	consult(Dp).
+
 main:-
+	who_am_i,
 	OptSpec = [[
 		opt(render),
 		type(boolean),
@@ -336,17 +374,7 @@ main:-
 	current_prolog_flag(argv,A),
 	opt_parse(OptSpec,A,O,_),
 	
-	(member(quiet(true),O) ; (
-		program_name(Name),
-		version(Ver),
-		say([Name," - Prolog Audio Synthesizer v",Ver,"\n"]),
-		(member(help(true),O) -> (
-			opt_help(OptSpec,H),
-			say(["\nCommand-line options:\n\n",H]),
-			halt
-		);true)
-	)),
-
+	( member(quiet(true),O) ; print_banner(O,OptSpec) ),
 	( member(prolog(true),O) -> enter_repl ; true ),
 	( member(render(false),O) -> halt ; true ),
 	%timed_goal(pnote).
