@@ -270,11 +270,11 @@ paplay_stream(Stream,Rate,Channels):-
 	process_create(path(paplay),['--raw','--format','float32le','--rate',Rate,'--channels',Channels],[stdin(pipe(Stream))]).
 
 aaw_stream(Stream):-
-	process_create('../2b/AAudio-write',[],[stdin(pipe(Stream))]).
+	process_create('../2b/AAudio-write-mono',[],[stdin(pipe(Stream))]).
 
 platform_stream(linux,Stream,Rate,Channels):-pwcat_stream(Stream,Rate,Channels).
-platform_stream(termux,Stream,Rate,Channels):-paplay_stream(Stream,Rate,Channels).
-%platform_stream(termux,Stream,Rate,1):-aaw_stream(Stream).
+%platform_stream(termux,Stream,Rate,Channels):-paplay_stream(Stream,Rate,Channels).
+platform_stream(termux,Stream,Rate,1):-aaw_stream(Stream).
 
 
 device_stream(Stream,Channels):-
@@ -340,6 +340,12 @@ print_banner(O,OptSpec) :-
 		halt
 	);true).
 
+assert_platform:-
+	current_prolog_flag(android,A),
+	current_prolog_flag(unix,U),
+	( U -> ( A -> P=termux ; P=linux ) ; P=unsupported),
+	assert(platform(P)).
+
 who_am_i:-
 	source_file(main,N),
 	assert(exec(N)),
@@ -347,8 +353,9 @@ who_am_i:-
 	assert(dir(D)),
 	file_base_name(D,Name),
 	assert(name(Name)),
-	atomic_list_concat([D,'/platform'],Dp),
-	consult(Dp).
+	assert_platform.
+	%atomic_list_concat([D,'/platform'],Dp),
+	%consult(Dp).
 
 main:-
 	who_am_i,
