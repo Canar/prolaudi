@@ -1,10 +1,12 @@
 #!/usr/bin/env swipl
 % vim: ft=prolog:noet:ts=4:sw=4
 :-	initialization(main,main)
+,	set_prolog_flag(stack_limit, 2_147_483_648)
 ,	use_module(library(protobufs))
 ,	use_module(library(yall))
 ,	use_module(library(readline))
 ,	use_module(library(process))
+,	use_module(library(prolog_profile))
 .
 
 say(X):-maplist(write(user_error),X).
@@ -109,13 +111,12 @@ split_note(Slen,note(Len,Tone),note(Slen,Tone),note(Slen,Len,Tone)) :- Rem is Le
 split_note(Slen,note(Start,Len,Tone),note(Start,Len,Tone),none) :- Start+Slen >= Len.
 split_note(Slen,note(Start,Len,Tone),note(Start,End,Tone),note(End,Len,Tone)) :- End is Start+Slen,End<Len.
 
+%TODO: instead of using numlist to generate a buffer, pass the buffer in and sum to it
 render_notes([],Stream):-close(Stream),!.
 render_notes([[_,Notes]|Ti],Stream):-
 	maplist([Note,O]>>(
 		render_note(Note,O)
 	),Notes,Os),
-	%transpose(Os,Ot),
-	%maplist([Samples,Sum]>>sumlist(Samples,Sum),Ot,Sums),
 	repose(Os,Sums),
 	maplist([F]>>(
 		protobufs:float32_codes(F,C),
@@ -123,6 +124,7 @@ render_notes([[_,Notes]|Ti],Stream):-
 	),Sums),
 	render_notes(Ti,Stream).
 
+%TODO: instead of using numlist to generate a buffer, pass the buffer in and sum to it
 render_note(note(Len,Tone),O):-render_note(note(0,Len,Tone),O).
 render_note(note(Start,Len,Tone),O):-
 	rate(Rate),
@@ -341,7 +343,7 @@ print_banner(O,OptSpec) :-
 	);true).
 
 assert_platform:-
-	current_prolog_flag(android,A),
+	( current_prolog_flag(android,A) ; A=false ),
 	current_prolog_flag(unix,U),
 	( U -> ( A -> P=termux ; P=linux ) ; P=unsupported),
 	assert(platform(P)).
@@ -358,6 +360,7 @@ who_am_i:-
 	%consult(Dp).
 
 main:-
+	trace,
 	who_am_i,
 	OptSpec = [[
 		opt(render),
@@ -423,7 +426,8 @@ main:-
 	;	stdout_stream(Stream)
 	),
 	*/
-	timed_goal(render_ptune(holyholyholy,Write)),
+	%profile(render_ptune(holyholyholy,Write)),
+	%timed_goal(prender_ptune(holyholyholy,Write)),
 	%timed_goal(seqnote(Stream)),
 	!.
 
