@@ -275,7 +275,7 @@ paplay_stream(Stream,Rate,Channels):-
 aaw_stream(Stream):-
 	process_create('../2b/AAudio-write-mono',[],[stdin(pipe(Stream))]).
 
-pwcat_process(Stream,Channels):-device_process(path('pw-cat'),['--playback','--raw','--format',f32],['-'],Channels,Stream).
+pwcat_process(Stream,Channels):-device_process(path('pw-cat'),['--playback','--format',f32],['-'],Channels,Stream).
 pacat_process(Stream,Channels):-device_process(path(pacat),['--playback','--raw','--format',float32le],[],Channels,Stream).
 aaw_process(Stream,1):-device_process('../2b/AAudio-write-mono',[],[],1,Stream).
 device_process(Exe,Pre,Post,Channels,Stream):-
@@ -284,7 +284,6 @@ device_process(Exe,Pre,Post,Channels,Stream):-
 	process_create(Exe,Args,[stdin(pipe(Stream))]),
 	set_stream(Stream,type(binary)).
 
-platform_app(linux,pwcat_process).
 
 platform_stream(linux,Stream,Rate,Channels):-pwcat_stream(Stream,Rate,Channels).
 %platform_stream(termux,Stream,Rate,Channels):-paplay_stream(Stream,Rate,Channels).
@@ -303,8 +302,13 @@ device_stream(Stream,Channels):-
 dev_stream(Stream,Channels):-
 	platform(Platform),
 	platform_app(Platform,App),
+	trace,
 	call(App,Stream,Channels).
 
+platform_app(linux,pwcat_process).
+
+platform_device(linux,pacat_stream).
+platform_device(termux,pacat_stream).
 
 
 %StdOut=stream(Out)
@@ -324,7 +328,6 @@ filter_config(normal,1,'dynaudnorm').
 platform_filter(linux,reverb).
 platform_filter(termux,normal).
 %platform_device(linux,pwcat_stream).
-platform_device(linux,pacat_stream).
 device_config(pwcat_stream,path('pw-cat'),['--playback','--format','f32'],['-']).
 device_config(pacat_stream,path('pacat'),['--playback','--raw','--format','float32le'],[]).
 
@@ -435,7 +438,7 @@ main:-
 	( member(render(false),O) -> halt ; true ),
 
 	( member(filter(true),O) -> filter_chan(Chan) ; Chan=1 ), %tap_reverb makes stereo from mono
-	( member(stream(true),O) -> device_stream(Dev,Chan) ; stdout_stream(Dev) ),
+	( member(stream(true),O) -> dev_stream(Dev,Chan) ; stdout_stream(Dev) ),
 	( member(filter(true),O) -> filter_stream(Write,Dev) ; Write=Dev ),
 	timed_goal(render_ptune(holyholyholy,Write)),
 	!.
