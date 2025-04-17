@@ -1,12 +1,14 @@
 #!/usr/bin/env swipl
 % vim: ft=prolog:noet:ts=4:sw=4
 :-	initialization(main,main)
-,	set_prolog_flag(stack_limit, 2_147_483_648)
 ,	use_module(library(protobufs))
 ,	use_module(library(yall))
 ,	use_module(library(readline))
 ,	use_module(library(process))
+
 ,	use_module(library(prolog_profile))
+,	set_prolog_flag(stack_limit, 2_147_483_648)
+
 .
 
 say(X):-maplist(write(user_error),X).
@@ -24,8 +26,7 @@ ostfm0(2 ** ( Hi / 12 ),Hi).
 note0(Ost,Chromatic,Scaled):-
 	ost(Ost,O),
 	length(O,Ostlen),
-	Octave is div(Scaled,Ostlen),
-	Offset is mod(Scaled,Ostlen),
+	divmod(Scaled,Ostlen,Octave,Offset),
 	nth0(Offset,O,Ostval),
 	Chromatic is Octave*12 + Ostval.
 	
@@ -33,9 +34,7 @@ note1(Ost,t(Chromatic,L),t(Scaled,L)):- note1(Ost,Chromatic,Scaled).
 note1(Ost,Chromatic,sharp(Scaled)):-    note0(Ost,Ca,Scaled),Chromatic is Ca + 1.
 note1(Ost,Chromatic,flat(Scaled)):-     note0(Ost,Ca,Scaled),Chromatic is Ca - 1.
 note1(Ost,Chromatic,Scaled):-           note0(Ost,Chromatic,Scaled).
-%eventseqp(Time,Event,Seq):-
-%eventseqp(Event,Seq):-
-%
+
 
 esp(_,[],[]).
 esp(Time,[Hi|Ti],[[Time,Hi]|To]):-esp(Time,Ti,To). %single note
@@ -56,31 +55,14 @@ seqp(In,Out):-
 	seqp_(0,In,Oz),
 	append(Oz,Out).
 
-render_ptune(TuneName,Stream):-
-	rate(Rate),
-	ptune(TuneName,Scale,Key,Notelen,Tune),
-
-	maplist([Event,F]>>(
-	maplist([Note,Funct]>>(
-		note1(Scale,Nm,Note),
-		ostfm0(Fm,Nm),
-		timetone(Time,Tone,Notelen,Fm),
-		Funct=..[note,Time,Key*Tone]
-		),Event,F)
-	),Tune,Seq),
-	seqp(Seq,Seqp),
-	ctsp(Seqp,C),
-	lenseq(C,L),
-	sampleseq(L,SS),
-	render_notes(SS,Stream).
-
 ctsp([],[]).
 ctsp([[Time,Event],[Time,Eb]|Tseqp],[[Time,[Event|Tn]]|Tctsp]):-
 	ctsp([[Time,Eb]|Tseqp],[[Time,Tn]|Tctsp]).
 ctsp([[Time,Event]|Tseqp],[[Time,[Event]]|Tctsp]):-
 	ctsp(Tseqp,Tctsp).
 
-lenseq([], []).
+%provide segment lengths, times, validate that the segment is as short as longest note
+lenseq([], []). 
 lenseq([[Time, Notes] | Ti], [[seg(LenS, Time), Notes] | To]) :-
     maplist([note(Len, _), Len]>>true, Notes, Lens),
     min_list(Lens, LenS),
@@ -114,6 +96,7 @@ split_note(Slen,note(Start,Len,Tone),note(Start,End,Tone),note(End,Len,Tone)) :-
 %TODO: instead of using numlist to generate a buffer, pass the buffer in and sum to it
 render_notes([],Stream):-close(Stream),!.
 render_notes([[_,Notes]|Ti],Stream):-
+	%numlist
 	maplist([Note,O]>>(
 		render_note(Note,O)
 	),Notes,Os),
@@ -154,6 +137,24 @@ transpose(Lists, [Row|Rows]) :-
 tail([_|T], T).
 
 
+
+render_ptune(TuneName,Stream):-
+	rate(Rate),
+	ptune(TuneName,Scale,Key,Notelen,Tune),
+
+	maplist([Event,F]>>(
+	maplist([Note,Funct]>>(
+		note1(Scale,Nm,Note),
+		ostfm0(Fm,Nm),
+		timetone(Time,Tone,Notelen,Fm),
+		Funct=..[note,Time,Key*Tone]
+		),Event,F)
+	),Tune,Seq),
+	seqp(Seq,Seqp),
+	ctsp(Seqp,C),
+	lenseq(C,L),
+	sampleseq(L,SS),
+	render_notes(SS,Stream).
 seqnote(Stream):-
 	rate(Rate),
 
@@ -278,12 +279,8 @@ platform_stream(linux,Stream,Rate,Channels):-pwcat_stream(Stream,Rate,Channels).
 %platform_stream(termux,Stream,Rate,Channels):-paplay_stream(Stream,Rate,Channels).
 platform_stream(termux,Stream,Rate,1):-aaw_stream(Stream).
 
-
 device_stream(Stream,Channels):-
 	rate(Rate),
-	device_stream(Stream,Rate,Channels).
-
-device_stream(Stream,Rate,Channels):-
 	platform(P),
 	platform_stream(P,Stream,Rate,Channels),
 	set_stream(Stream,type(binary)).
@@ -344,7 +341,7 @@ print_banner(O,OptSpec) :-
 
 assert_platform:-
 	( current_prolog_flag(android,A) ; A=false ),
-	current_prolog_flag(unix,U),
+	( current_prolog_flag(unix,U) ; U=false ),
 	( U -> ( A -> P=termux ; P=linux ) ; P=unsupported),
 	assert(platform(P)).
 
@@ -360,7 +357,6 @@ who_am_i:-
 	%consult(Dp).
 
 main:-
-	trace,
 	who_am_i,
 	OptSpec = [[
 		opt(render),
@@ -412,7 +408,7 @@ main:-
 	/*
 	( member(stream(true),O) ; 
 	 */
-	( member(filter(true),O) -> filter_chan(Chan) ; Chan=1 ),
+	( member(filter(true),O) -> filter_chan(Chan) ; Chan=1 ), %tap_reverb makes stereo from mono
 	( member(stream(true),O) -> device_stream(Dev,Chan) ; stdout_stream(Dev) ),
 	( member(filter(true),O) -> filter_stream(Write,Dev) ; Write=Dev ),
 
@@ -427,7 +423,7 @@ main:-
 	),
 	*/
 	%profile(render_ptune(holyholyholy,Write)),
-	%timed_goal(prender_ptune(holyholyholy,Write)),
+	timed_goal(render_ptune(holyholyholy,Write)),
 	%timed_goal(seqnote(Stream)),
 	!.
 
