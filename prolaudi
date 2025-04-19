@@ -116,7 +116,7 @@ render_note(note(Start,Len,Tone),O):-
 	LenS is truncate(Len*Rate)-1,
 	numlist(StartS,LenS,IndexList),
 	maplist([Index,BufferOutM]>>(
-		BufferOutM is sin(Coeff * Tone * Index)
+		BufferOutM is sin(Coeff * Tone * Index)/5
 	),IndexList,O).
 
 repose([], []).
@@ -302,10 +302,10 @@ device_stream(Stream,Channels):-
 dev_stream(Stream,Channels):-
 	platform(Platform),
 	platform_app(Platform,App),
-	trace,
 	call(App,Stream,Channels).
 
 platform_app(linux,pwcat_process).
+platform_app(termux,aaw_process).
 
 platform_device(linux,pacat_stream).
 platform_device(termux,pacat_stream).
@@ -372,12 +372,6 @@ print_banner(O,OptSpec) :-
 		halt
 	);true).
 
-assert_platform:-
-	( current_prolog_flag(android,A) ; A=false ),
-	( current_prolog_flag(unix,U) ; U=false ),
-	( U -> ( A -> P=termux ; P=linux ) ; P=unsupported),
-	assert(platform(P)).
-
 who_am_i:-
 	source_file(main,N),
 	assert(exec(N)),
@@ -385,9 +379,11 @@ who_am_i:-
 	assert(dir(D)),
 	file_base_name(D,Name),
 	assert(name(Name)),
-	assert_platform.
-	%atomic_list_concat([D,'/platform'],Dp),
-	%consult(Dp).
+
+	( current_prolog_flag(android,A) ; A=false ),
+	( current_prolog_flag(unix,U) ; U=false ),
+	( U -> ( A -> P=termux ; P=linux ) ; P=unsupported),
+	assert(platform(P)).
 
 main:-
 	who_am_i,
