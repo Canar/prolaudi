@@ -6,8 +6,8 @@
 ,	use_module(library(readline))
 ,	use_module(library(process))
 
-,	use_module(library(prolog_profile))
-,	set_prolog_flag(stack_limit, 2_147_483_648)
+%,	use_module(library(prolog_profile))
+%,	set_prolog_flag(stack_limit, 2_147_483_648)
 
 .
 
@@ -31,34 +31,34 @@ note0(Ost,Chromatic,Scaled):-
 	Chromatic is Octave*12 + Ostval.
 	
 note1(Ost,t(Chromatic,L),t(Scaled,L)):- note1(Ost,Chromatic,Scaled).
-note1(Ost,Chromatic,sharp(Scaled)):-    note0(Ost,Ca,Scaled),Chromatic is Ca + 1.
-note1(Ost,Chromatic,flat(Scaled)):-     note0(Ost,Ca,Scaled),Chromatic is Ca - 1.
+note1(Ost,Chromatic,sharp(Scaled)):-    note1(Ost,Ca,Scaled),Chromatic is Ca + 1.
+note1(Ost,Chromatic,flat(Scaled)):-     note1(Ost,Ca,Scaled),Chromatic is Ca - 1.
 note1(Ost,Chromatic,Scaled):-           note0(Ost,Chromatic,Scaled).
 
-
+%esp applies a time code to a note by wrapping it in a list. used by seqp_ only
 esp(_,[],[]).
 esp(Time,[Hi|Ti],[[Time,Hi]|To]):-esp(Time,Ti,To). %single note
 
-
+%seqp applies time codes to a list of notes
+seqp(In,Out):-
+	seqp_(0,In,Oz),
+	append(Oz,Out).
 seqp_(_,[],[]).
 seqp_(Time,[Hi|Ti],[Ho|To]):- % single "event", ie. list of notes
 	nth0(0,Hi,note(Mna,_)),
 	foldl([E,If,Of]>>(
 		E=note(Lf,_),
-		Of is min(If,Lf)
+		minn(If,Lf,Of)
 	),Hi,Mna,O),
 	TimeN is Time + O,
 	esp(Time,Hi,Ho),
 	seqp_(TimeN,Ti,To).
 
-seqp(In,Out):-
-	seqp_(0,In,Oz),
-	append(Oz,Out).
-
+%ctsp splits seqp output by time by matching subsequent times
 ctsp([],[]).
-ctsp([[Time,Event],[Time,Eb]|Tseqp],[[Time,[Event|Tn]]|Tctsp]):-
+ctsp([[Time,Event],[Time,Eb]|Tseqp],[[Time,[Event|Tn]]|Tctsp]):- %next event is at same time as current
 	ctsp([[Time,Eb]|Tseqp],[[Time,Tn]|Tctsp]).
-ctsp([[Time,Event]|Tseqp],[[Time,[Event]]|Tctsp]):-
+ctsp([[Time,Event]|Tseqp],[[Time,[Event]]|Tctsp]):- %next event must not be at same time as current
 	ctsp(Tseqp,Tctsp).
 
 %provide segment lengths, times, validate that the segment is as short as longest note
@@ -68,6 +68,7 @@ lenseq([[Time, Notes] | Ti], [[seg(LenS, Time), Notes] | To]) :-
     min_list(Lens, LenS),
     lenseq(Ti, To).
 
+%splits notes from events such that they fit within seg
 sampleseq(L,SS):-sampleseq(L,SS,[]).
 sampleseq([],[],[]).
 sampleseq([[seg(Slen,Time),Notes]|Rest], [[seg(Slen,Time),Processed]|SS], Acc) :-
@@ -79,6 +80,7 @@ sampleseq([[seg(Slen,Time),Notes]|Rest], [[seg(Slen,Time),Processed]|SS], Acc) :
     ;   sampleseq(Rest, SS, NewAcc)
     ).
 
+%handles notes from sampleseq event
 process_notes(_,[],[],[]).
 process_notes(Slen,[Note|Notes],[Split|Processed],Acc):-
 	split_note(Slen,Note,Split,Remainder),!,
@@ -88,12 +90,14 @@ process_notes(Slen,[Note|Notes],[Split|Processed],Acc):-
 		process_notes(Slen,Notes,Processed,NewAcc)
 	).
 
+%handles note splitting logic
 split_note(Slen,note(Len,Tone),note(Len,Tone),none) :- Len =< Slen.
 split_note(Slen,note(Len,Tone),note(Slen,Tone),note(Slen,Len,Tone)) :- Rem is Len - Slen,Rem>0.
 split_note(Slen,note(Start,Len,Tone),note(Start,Len,Tone),none) :- Start+Slen >= Len.
 split_note(Slen,note(Start,Len,Tone),note(Start,End,Tone),note(End,Len,Tone)) :- End is Start+Slen,End<Len.
 
 %TODO: instead of using numlist to generate a buffer, pass the buffer in and sum to it
+%writes sampleseq output to Stream
 render_notes([],Stream):-close(Stream),!.
 render_notes([[_,Notes]|Ti],Stream):-
 	%numlist
@@ -136,10 +140,7 @@ transpose(Lists, [Row|Rows]) :-
 
 tail([_|T], T).
 
-
-
 render_ptune(TuneName,Stream):-
-	rate(Rate),
 	ptune(TuneName,Scale,Key,Notelen,Tune),
 
 	maplist([Event,F]>>(
@@ -155,6 +156,7 @@ render_ptune(TuneName,Stream):-
 	lenseq(C,L),
 	sampleseq(L,SS),
 	render_notes(SS,Stream).
+
 seqnote(Stream):-
 	rate(Rate),
 
@@ -177,54 +179,57 @@ seqnote(Stream):-
 	),Tune).
 
 mins([A,_],[B,_]):-min(A,B).
+minn(A,B,C) :- A>B -> C=B ; C=A.
 
-minn(A,B,C):-C is min(A,B).
+pwcat_process(Stream,Channels) :- device_process(path('pw-cat'),['--playback','--format',f32],['-'],Channels,Stream).
+pacat_process(Stream,Channels) :- device_process(path(pacat),['--playback','--raw','--format',float32le],[],Channels,Stream).
+aaw_process(Stream,1)          :- device_process('../2b/AAudio-write-mono',[],[],1,Stream).
 
-mixdown(Counts,Signals,Write,BufferIn,BufferOut):-
-	min_member(Mn,Counts),
-	max_member(Mx,Counts),
-	numlist(1,Mx,IndexList),
-	maplist([Index,BufferOutM]>>(
-		( nth1(Index,BufferIn,A) ; A=0.0 ),
-		foldl([S,I,O]>>(
-			nth1(Index,S,V),
-			say([I,"\n"]),
-			O is I + V;
-			O=I
-		),Signals,A,BufferOutM)
-	),IndexList,BufferOut),
-	say([Mn,Write]).%hiding error
-
-pnote():-
+device_process(Exe,Pre,Post,Channels,Stream):-
 	rate(Rate),
+	append([Pre,['--rate',Rate,'--channels',Channels],Post],Args),
+	process_create(Exe,Args,[stdin(pipe(Stream))]),
+	set_stream(Stream,type(binary)).
 
-	TuneName=holyholyholy,
-	ptune(TuneName,Scale,Key,Notelen,Tune),
+device_stream(Stream,Channels):-
+	platform(Platform),
+	platform_device(Platform,Device),
+	call(Device,Stream,Channels).
 
-	maplist([Event]>>(
-		maplist([Note,Sz,SampleCount]>>(
-			note1(Scale,Nm,Note),
-			ostfm0(Fm,Nm),
-			timetone(Time,Tone,Notelen,Fm),
-			SampleCount is truncate(Rate*Time),
-			numlist(1,SampleCount,IndexList),
-			maplist([Im,Sm]>>(
-				Sm is sin(2*pi* Tone * Key * (Im-1) / Rate)
-			),IndexList,Sz)
-		),Event,S,SampleCounts),
-		mixdown(SampleCounts,S,Write,[],BufferOut),
-		say([BufferOut,"\n",Write])
-		%min_member(Msc,SampleCounts),
-		%say([Msc,"\n"])
-	),Tune).
-		/*
-		.
+platform_device(linux,pwcat_process).
+platform_device(termux,aaw_process).
 
-				protobufs:float32_codes(Sm,Cm),
-				maplist(put_byte(user_output),Cm)
-			),IndexList)
-	),Tune).
-	*/
+%StdOut=stream(Out)
+%StdIn=pipe(In)
+ffmpeg_in_out(In,Out,Filter):-
+	rate(Rate),
+	process_create(path('ffmpeg'),
+		['-hide_banner','-loglevel','warning',
+		'-f','f32le','-ar',Rate,'-channel_layout','mono','-i','-',
+		'-af',Filter,'-f','f32le','-acodec','pcm_f32le','-'],
+		[stdin(pipe(In)),stdout(stream(Out))]
+	),
+	set_stream(In,type(binary)).
+
+filter_config(reverb,2,'ladspa=file=tap_reverb:tap_reverb'):-platform(linux).
+filter_config(normal,1,'dynaudnorm').
+platform_filter(linux,reverb).
+platform_filter(termux,normal).
+device_config(pwcat_stream,path('pw-cat'),['--playback','--format','f32'],['-']).
+device_config(pacat_stream,path('pacat'),['--playback','--raw','--format','float32le'],[]).
+
+filter_chan(Chan):-
+	platform(P),
+	platform_filter(P,F),
+	filter_config(F,Chan,_).
+
+filter_stream(In,Out):-
+	platform(Plat),
+	platform_filter(Plat,Filt),
+	filter_config(Filt,_,Config),
+	ffmpeg_in_out(In,Out,Config).
+
+stdout_stream(user_output) :- set_stream(user_output,type(binary)).
 
 default_history_file('~/.swipl_history').
 
@@ -266,101 +271,6 @@ timed_goal(Goal):-
 	TakenTime is EndTime-StartTime,
 	say(['Time taken: ',TakenTime,"\n"]).
 
-pwcat_stream(Stream,Rate,Channels):-
-	process_create(path('pw-cat'),['--playback','--format','f32','--rate',Rate,'--channels',Channels,'-'],[stdin(pipe(Stream))]).
-
-paplay_stream(Stream,Rate,Channels):-
-	process_create(path(paplay),['--raw','--format','float32le','--rate',Rate,'--channels',Channels],[stdin(pipe(Stream))]).
-
-aaw_stream(Stream):-
-	process_create('../2b/AAudio-write-mono',[],[stdin(pipe(Stream))]).
-
-pwcat_process(Stream,Channels):-device_process(path('pw-cat'),['--playback','--format',f32],['-'],Channels,Stream).
-pacat_process(Stream,Channels):-device_process(path(pacat),['--playback','--raw','--format',float32le],[],Channels,Stream).
-aaw_process(Stream,1):-device_process('../2b/AAudio-write-mono',[],[],1,Stream).
-device_process(Exe,Pre,Post,Channels,Stream):-
-	rate(Rate),
-	append([Pre,['--rate',Rate,'--channels',Channels],Post],Args),
-	process_create(Exe,Args,[stdin(pipe(Stream))]),
-	set_stream(Stream,type(binary)).
-
-
-platform_stream(linux,Stream,Rate,Channels):-pwcat_stream(Stream,Rate,Channels).
-%platform_stream(termux,Stream,Rate,Channels):-paplay_stream(Stream,Rate,Channels).
-platform_stream(termux,Stream,Rate,1):-aaw_stream(Stream).
-
-device_stream(Stream,Channels):-
-	rate(Rate),
-	platform(P),
-	platform_device(P,D),
-	device_config(D,Exe,ExtraArgPre,ExtraArgPost),
-	append([ExtraArgPre,['--rate',Rate,'--channels',Channels],ExtraArgPost],ExeArg),
-	process_create(Exe,ExeArg,[stdin(pipe(Stream))]),
-	%platform_stream(P,Stream,Rate,Channels),
-	set_stream(Stream,type(binary)).
-
-dev_stream(Stream,Channels):-
-	platform(Platform),
-	platform_app(Platform,App),
-	call(App,Stream,Channels).
-
-platform_app(linux,pwcat_process).
-platform_app(termux,aaw_process).
-
-platform_device(linux,pacat_stream).
-platform_device(termux,pacat_stream).
-
-
-%StdOut=stream(Out)
-%StdIn=pipe(In)
-ffmpeg_in_out(In,Out,Filter):-
-	rate(Rate),
-	process_create(path('ffmpeg'),
-		['-hide_banner','-loglevel','warning',
-		'-f','f32le','-ar',Rate,'-channel_layout','mono','-i','-',
-		'-af',Filter,'-f','f32le','-acodec','pcm_f32le','-'],
-		[stdin(pipe(In)),stdout(stream(Out))]
-	),
-	set_stream(In,type(binary)).
-
-filter_config(reverb,2,'ladspa=file=tap_reverb:tap_reverb'):-platform(linux).
-filter_config(normal,1,'dynaudnorm').
-platform_filter(linux,reverb).
-platform_filter(termux,normal).
-%platform_device(linux,pwcat_stream).
-device_config(pwcat_stream,path('pw-cat'),['--playback','--format','f32'],['-']).
-device_config(pacat_stream,path('pacat'),['--playback','--raw','--format','float32le'],[]).
-
-filter_chan(Chan):-
-	platform(P),
-	platform_filter(P,F),
-	filter_config(F,Chan,_).
-
-filter_stream(In,Out):-
-	platform(Plat),
-	platform_filter(Plat,Filt),
-	filter_config(Filt,Chan,Config),
-	ffmpeg_in_out(In,Out,Config).
-
-platform_filter_stream(linux,In,Out,2):-
-	ffmpeg_in_out(In,Out,'ladspa=file=tap_reverb:tap_reverb').
-platform_filter_stream(termux,In,Out,1):-
-	ffmpeg_in_out(In,Out,'dynaudnorm').
-
-filtered_device_stream(Stream,Rate):-
-	%filtered_device_stream(Stream,'ladspa=file=tap_reverb:tap_reverb',Rate,1),
-	filtered_device_stream(Stream,'dynaudnorm',Rate,1),
-	set_stream(Stream,type(binary)).
-
-filtered_device_stream(Stream,Filter,Rate,1):-
-	device_stream(FilterStream,Rate,1),
-	%device_stream(FilterStream,Rate,2),
-	process_create(path('ffmpeg'),
-		['-hide_banner','-loglevel','warning','-f','f32le','-ar',Rate,'-channel_layout','mono','-i','-','-af',Filter,'-f','f32le','-acodec','pcm_f32le','-'],
-		[stdin(pipe(Stream)),stdout(stream(FilterStream))]
-	).
-
-stdout_stream(user_output) :- set_stream(user_output,type(binary)).
 
 print_banner(O,OptSpec) :-
 	name(Name),
@@ -434,7 +344,7 @@ main:-
 	( member(render(false),O) -> halt ; true ),
 
 	( member(filter(true),O) -> filter_chan(Chan) ; Chan=1 ), %tap_reverb makes stereo from mono
-	( member(stream(true),O) -> dev_stream(Dev,Chan) ; stdout_stream(Dev) ),
+	( member(stream(true),O) -> device_stream(Dev,Chan) ; stdout_stream(Dev) ),
 	( member(filter(true),O) -> filter_stream(Write,Dev) ; Write=Dev ),
 	timed_goal(render_ptune(holyholyholy,Write)),
 	!.
