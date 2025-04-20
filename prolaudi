@@ -183,7 +183,7 @@ minn(A,B,C) :- A>B -> C=B ; C=A.
 
 pwcat_process(Stream,Channels) :- device_process(path('pw-cat'),['--playback','--format',f32],['-'],Channels,Stream).
 pacat_process(Stream,Channels) :- device_process(path(pacat),['--playback','--raw','--format',float32le],[],Channels,Stream).
-aaw_process(Stream,1)          :- device_process('../2b/AAudio-write-mono',[],[],1,Stream).
+aaw_process(Stream,Channels)   :- device_process('../2b/AAudio-write',[],[],Channels,Stream).
 
 device_process(Exe,Pre,Post,Channels,Stream):-
 	rate(Rate),
