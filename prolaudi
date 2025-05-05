@@ -102,10 +102,7 @@ render_notes_b([],Stream):-close(Stream),!.
 render_notes_b([[seg(Slen,_),Notes]|Ti],Stream):-
 	rate(Rate),
 	SlenS is Slen * Rate,
-	%trace,
-    %findall(0, between(1, SlenS, _), Buf),
-	length(Buf,SlenS),
-	maplist(=(0),Buf),
+    findall(0, between(1, SlenS, _), Buf),
 	foldl([Note,Is,Os]>>(
 		render_note_b(Note,Is,Os)
 	),Notes,Buf,Sums),
@@ -124,7 +121,7 @@ render_note_b(note(Start,Len,Tone),I,O):-
 	LenS is truncate(Len*Rate)-1,
 	numlist(StartS,LenS,IndexList),
 	FadeS is LenS>>3,
-	foldl([Index,IS,OS]>>(
+	maplist([Index,IS,OS]>>(
 		(	Index + FadeS < LenS
 		->	Mul = 1.0
 		;	Mul is (LenS - Index)/FadeS
