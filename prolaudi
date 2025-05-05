@@ -181,7 +181,7 @@ seqnote(Stream):-
 mins([A,_],[B,_]):-min(A,B).
 minn(A,B,C) :- A>B -> C=B ; C=A.
 
-pwcat_process(Stream,Channels) :- device_process(path('pw-cat'),['--playback','--format',f32],['-'],Channels,Stream).
+pwcat_process(Stream,Channels) :- device_process(path('pw-cat'),['--playback','--raw','--format',f32],['-'],Channels,Stream).
 pacat_process(Stream,Channels) :- device_process(path(pacat),['--playback','--raw','--format',float32le],[],Channels,Stream).
 aaw_process(Stream,Channels)   :- device_process('../2b/AAudio-write',[],[],Channels,Stream).
 
@@ -203,15 +203,16 @@ platform_device(termux,aaw_process).
 %StdIn=pipe(In)
 ffmpeg_in_out(In,Out,Filter):-
 	rate(Rate),
-	process_create(path('ffmpeg'),
+	process_create(
+		path('ffmpeg'),
 		['-hide_banner','-loglevel','warning',
-		'-f','f32le','-ar',Rate,'-channel_layout','mono','-i','-',
-		'-af',Filter,'-f','f32le','-acodec','pcm_f32le','-'],
+			'-f','f32le','-ar',Rate,'-channel_layout','mono','-i','-',
+			'-af',Filter,'-f','f32le','-acodec','pcm_f32le','-'],
 		[stdin(pipe(In)),stdout(stream(Out))]
 	),
 	set_stream(In,type(binary)).
 
-filter_config(reverb,2,'ladspa=file=tap_reverb:tap_reverb'):-platform(linux).
+filter_config(reverb,2,'ladspa=tap_reverb:tap_reverb'):-platform(linux).
 filter_config(normal,1,'dynaudnorm').
 platform_filter(linux,reverb).
 platform_filter(termux,normal).
@@ -342,10 +343,10 @@ main:-
 	( member(quiet(true),O) ; print_banner(O,OptSpec) ),
 	( member(prolog(true),O) -> enter_repl ; true ),
 	( member(render(false),O) -> halt ; true ),
-
 	( member(filter(true),O) -> filter_chan(Chan) ; Chan=1 ), %tap_reverb makes stereo from mono
 	( member(stream(true),O) -> device_stream(Dev,Chan) ; stdout_stream(Dev) ),
 	( member(filter(true),O) -> filter_stream(Write,Dev) ; Write=Dev ),
+
 	timed_goal(render_ptune(holyholyholy,Write)),
 	!.
 
