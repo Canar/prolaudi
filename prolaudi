@@ -113,11 +113,13 @@ render_notes_b([[seg(Slen,_),Notes]|Ti],Stream):-
 render_note_b(note(Len,Tone),I,O):-render_note_b(note(0,Len,Tone),I,O).
 render_note_b(note(Start,Len,Tone),I,O):-
 	rate(Rate),
-	Coeff is 2 * pi / Rate,
+	CRT is Tone * 2 * pi / Rate,
 	StartS is truncate(Start*Rate),
 	LenS is truncate(Len*Rate)-1,
-	numlist(StartS,LenS,IndexList),
 	FadeS is LenS>>3,
+	render_note_range(StartS,LenS,CRT,FadeS,I,O).
+
+/*
 	maplist([Index,IS,OS]>>(
 		(	Index + FadeS < LenS
 		->	Mul = 1.0
@@ -125,8 +127,9 @@ render_note_b(note(Start,Len,Tone),I,O):-
 		),
 		OS is IS + sin(Coeff * Tone * Index) * Mul 
 	),IndexList,I,O).
+*/
 
-render_note_range(Idx, LenS, _, _, _, I, I):-Idx > LenS,!.
+render_note_range(Idx,LenS,_,_,I,I):-Idx>LenS,!.
 render_note_range(Idx,LenS,CRT,FadeS,[I|Is],[O|Os]) :-
     ( Idx+FadeS<LenS -> Mul=1.0 ; Mul is (LenS - Idx) / FadeS ),
     O is I + sin(CRT * Idx) * Mul,
