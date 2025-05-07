@@ -119,23 +119,16 @@ render_note_b(note(Start,Len,Tone),I,O):-
 	FadeS is LenS>>3,
 	render_note_range(StartS,LenS,CRT,FadeS,I,O).
 
-/*
-	maplist([Index,IS,OS]>>(
-		(	Index + FadeS < LenS
-		->	Mul = 1.0
-		;	Mul is (LenS - Index)/FadeS
-		),
-		OS is IS + sin(Coeff * Tone * Index) * Mul 
-	),IndexList,I,O).
-*/
-
 render_note_range(Idx,LenS,_,_,I,I):-Idx>LenS,!.
 render_note_range(Idx,LenS,CRT,FadeS,[I|Is],[O|Os]) :-
-    ( Idx+FadeS<LenS -> Mul=1.0 ; Mul is (LenS - Idx) / FadeS ),
+    ( Idx+FadeS<LenS -> Mul=1.0 ; Mul is (LenS-Idx)/FadeS ),
     O is I + sin(CRT * Idx) * Mul,
     NextIdx is Idx + 1,
     render_note_range(NextIdx,LenS,CRT,FadeS,Is,Os).
 
+envelope(fade,Index,Length,Mul,Fade) :- Index+Fade<Length -> Mul=1.0 ; Mul=(Length-Index)/Fade.
+	
+	
 %TODO: instead of using numlist to generate a buffer, pass the buffer in and sum to it
 %writes sampleseq output to Stream
 render_notes([],Stream):-close(Stream),!.
