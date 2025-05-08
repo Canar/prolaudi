@@ -14,6 +14,8 @@
 say(X):-maplist(write(user_error),X).
 sayl(L):-maplist([I]>>( say([I,"\n"]) ),L).
 
+minn(A,B,C) :- A>B -> C=B ; C=A.
+
 rate(44100).
 version('0.0.0').
 
@@ -69,18 +71,18 @@ lenseq([[Time, Notes] | Ti], [[seg(LenS, Time), Notes] | To]) :-
     lenseq(Ti, To).
 
 %splits notes from events such that they fit within seg
-sampleseq(L,SS):-sampleseq(L,SS,[]).
-sampleseq([],[],[]).
-sampleseq([[seg(Slen,Time),Notes]|Rest], [[seg(Slen,Time),Processed]|SS], Acc) :-
+segment_notes(L,SS):-segment_notes(L,SS,[]).
+segment_notes([],[],[]).
+segment_notes([[seg(Slen,Time),Notes]|Rest], [[seg(Slen,Time),Processed]|SS], Acc) :-
     append(Acc,Notes,AllNotes),
     process_notes(Slen,AllNotes,Processed,NewAcc),
     (   Rest = [], NewAcc \= []
     ->  NewTime is Time + Slen,
-        sampleseq([[seg(Slen,NewTime),NewAcc]], SS, [])
-    ;   sampleseq(Rest, SS, NewAcc)
+        segment_notes([[seg(Slen,NewTime),NewAcc]], SS, [])
+    ;   segment_notes(Rest, SS, NewAcc)
     ).
 
-%handles notes from sampleseq event
+%handles notes from segment_notes event
 process_notes(_,[],[],[]).
 process_notes(Slen,[Note|Notes],[Split|Processed],Acc):-
 	split_note(Slen,Note,Split,Remainder),!,
@@ -121,63 +123,13 @@ render_note_b(note(Start,Len,Tone),I,O):-
 
 render_note_range(Idx,LenS,_,_,I,I):-Idx>LenS,!.
 render_note_range(Idx,LenS,CRT,FadeS,[I|Is],[O|Os]) :-
-    ( Idx+FadeS<LenS -> Mul=1.0 ; Mul is (LenS-Idx)/FadeS ),
+	envelope(fade,Idx,LenS,Mul,FadeS),	
     O is I + sin(CRT * Idx) * Mul,
     NextIdx is Idx + 1,
     render_note_range(NextIdx,LenS,CRT,FadeS,Is,Os).
 
 envelope(fade,Index,Length,Mul,Fade) :- Index+Fade<Length -> Mul=1.0 ; Mul=(Length-Index)/Fade.
 	
-	
-%TODO: instead of using numlist to generate a buffer, pass the buffer in and sum to it
-%writes sampleseq output to Stream
-render_notes([],Stream):-close(Stream),!.
-render_notes([[_,Notes]|Ti],Stream):-
-	%numlist
-	maplist([Note,O]>>(
-		render_note(Note,O)
-	),Notes,Os),
-	repose(Os,Sums),
-	maplist([F]>>(
-		protobufs:float32_codes(F,C),
-		maplist(put_byte(Stream),C)
-	),Sums),
-	render_notes(Ti,Stream).
-
-%TODO: instead of using numlist to generate a buffer, pass the buffer in and sum to it
-render_note(note(Len,Tone),O):-render_note(note(0,Len,Tone),O).
-render_note(note(Start,Len,Tone),O):-
-	rate(Rate),
-	Coeff is 2 * pi / Rate,
-	StartS is truncate(Start*Rate),
-	LenS is truncate(Len*Rate)-1,
-	numlist(StartS,LenS,IndexList),
-	FadeS is LenS>>3,
-	maplist([Index,BufferOutM]>>(
-		(	Index + FadeS < LenS
-		->	Mul = 1.0
-		;	Mul is (LenS - Index)/FadeS
-		),
-		BufferOutM is sin(Coeff * Tone * Index) * Mul 
-	),IndexList,O).
-
-repose([], []).
-repose([[]|_], []).
-repose(Lists, [Val|Rows]) :-
-    maplist(nth0(0), Lists, Row),
-	sumlist(Row,Val),
-    maplist(tail, Lists, Tails),
-    repose(Tails, Rows).
-
-transpose([], []).
-transpose([[]|_], []).
-transpose(Lists, [Row|Rows]) :-
-    maplist(nth0(0), Lists, Row),
-    maplist(tail, Lists, Tails),
-    transpose(Tails, Rows).
-
-tail([_|T], T).
-
 render_ptune(TuneName,Stream):-
 	ptune(TuneName,Scale,Key,Notelen,Tune),
 
@@ -192,7 +144,7 @@ render_ptune(TuneName,Stream):-
 	seqp(Seq,Seqp),
 	ctsp(Seqp,C),
 	lenseq(C,L),
-	sampleseq(L,SS),
+	segment_notes(L,SS),
 	render_notes_b(SS,Stream).
 
 seqnote(Stream):-
@@ -216,8 +168,8 @@ seqnote(Stream):-
 		),IndexList)
 	),Tune).
 
-mins([A,_],[B,_]):-min(A,B).
-minn(A,B,C) :- A>B -> C=B ; C=A.
+platform_device(linux,pwcat_process).
+platform_device(termux,aaw_process).
 
 pwcat_process(Stream,Channels) :- device_process(path('pw-cat'),['--playback','--raw','--format',f32],['-'],Channels,Stream).
 pacat_process(Stream,Channels) :- device_process(path(pacat),['--playback','--raw','--format',float32le],[],Channels,Stream).
@@ -233,9 +185,6 @@ device_stream(Stream,Channels):-
 	platform(Platform),
 	platform_device(Platform,Device),
 	call(Device,Stream,Channels).
-
-platform_device(linux,pwcat_process).
-platform_device(termux,aaw_process).
 
 %StdOut=stream(Out)
 %StdIn=pipe(In)
@@ -255,8 +204,6 @@ filter_config(normal,1,'dynaudnorm').
 platform_filter(linux,normal).
 %platform_filter(linux,reverb).
 platform_filter(termux,normal).
-device_config(pwcat_stream,path('pw-cat'),['--playback','--format','f32'],['-']).
-device_config(pacat_stream,path('pacat'),['--playback','--raw','--format','float32le'],[]).
 
 filter_chan(Chan):-
 	platform(P),
